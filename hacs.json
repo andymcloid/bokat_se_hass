@@ -1,8 +1,8 @@
 {
   "name": "Bokat.se",
-  "content_in_root": false,
   "render_readme": true,
+  "content_in_root": false,
   "domains": ["sensor"],
-  "homeassistant": "2023.1.0",
+  "homeassistant": "2023.8.0",
   "iot_class": "cloud_polling"
 }

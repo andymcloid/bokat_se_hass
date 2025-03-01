@@ -1,6 +1,8 @@
 """The Bokat.se integration."""
 import asyncio
 import logging
+import os
+import shutil
 from datetime import timedelta
 
 import aiohttp
@@ -14,11 +16,30 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.helpers.config_validation as cv
 
-from .const import DOMAIN, CONF_USERNAME, CONF_PASSWORD, CONF_ACTIVITY_URL
+from .const import (
+    DOMAIN,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_ACTIVITY_URL,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    SERVICE_REFRESH,
+    SERVICE_SELECT_ACTIVITY,
+    SERVICE_RESPOND,
+    ATTR_ENTITY_ID,
+    ATTR_ACTIVITY_URL,
+    ATTR_ATTENDANCE,
+    ATTR_COMMENT,
+    ATTR_GUESTS,
+    ATTENDANCE_YES,
+    ATTENDANCE_NO,
+    ATTENDANCE_COMMENT_ONLY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=30)
+# This is no longer used as we get the scan interval from the config entry
+# SCAN_INTERVAL = timedelta(minutes=30)
 
 SERVICE_REFRESH = "refresh"
 SERVICE_SELECT_ACTIVITY = "select_activity"
@@ -28,66 +49,136 @@ SERVICE_SELECT_ACTIVITY_SCHEMA = vol.Schema({
     vol.Required("activity_url"): cv.string,
 })
 
-async def async_setup(hass: HomeAssistant, config: dict):
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Bokat.se component."""
     hass.data.setdefault(DOMAIN, {})
+    
+    # Copy the frontend card to the www directory
+    await hass.async_add_executor_job(copy_frontend_card, hass)
+    
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+def copy_frontend_card(hass: HomeAssistant) -> None:
+    """Copy the frontend card to the www directory."""
+    # Get the path to the www directory
+    www_dir = os.path.join(hass.config.path(), "www")
+    
+    # Create the www directory if it doesn't exist
+    if not os.path.exists(www_dir):
+        os.makedirs(www_dir)
+    
+    # Get the path to the frontend card
+    component_dir = os.path.dirname(os.path.dirname(__file__))
+    card_src = os.path.join(component_dir, "www", "bokat-se-card.js")
+    
+    # Check if the card exists in the component directory
+    if os.path.exists(card_src):
+        # Copy the card to the www directory
+        card_dest = os.path.join(www_dir, "bokat-se-card.js")
+        shutil.copy2(card_src, card_dest)
+        _LOGGER.info("Copied Bokat.se card to www directory")
+    else:
+        _LOGGER.warning("Bokat.se card not found in component directory")
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Bokat.se from a config entry."""
+    username = entry.data[CONF_USERNAME]
+    password = entry.data[CONF_PASSWORD]
+    activity_url = entry.data.get(CONF_ACTIVITY_URL)
+    scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    
     session = async_get_clientsession(hass)
     
     coordinator = BokatDataUpdateCoordinator(
         hass,
         _LOGGER,
-        username=entry.data[CONF_USERNAME],
-        password=entry.data[CONF_PASSWORD],
-        activity_url=entry.data.get(CONF_ACTIVITY_URL),
+        username=username,
+        password=password,
+        activity_url=activity_url,
         session=session,
+        scan_interval=scan_interval,
     )
     
     await coordinator.async_config_entry_first_refresh()
     
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     
-    # Register services
-    async def handle_refresh(call: ServiceCall):
+    async def handle_refresh(call):
         """Handle the refresh service call."""
-        entity_id = call.data.get("entity_id")
+        entity_id = call.data.get(ATTR_ENTITY_ID)
+        
+        if not entity_id:
+            # Refresh all entities
+            for coordinator in hass.data[DOMAIN].values():
+                await coordinator.async_refresh()
+            return
         
         # Find the coordinator for this entity
-        for entry_id, coord in hass.data[DOMAIN].items():
-            if hasattr(coord, 'entity_id') and coord.entity_id == entity_id:
-                await coord.async_refresh()
-                break
+        for coordinator in hass.data[DOMAIN].values():
+            if coordinator.entity_id == entity_id:
+                await coordinator.async_refresh()
+                return
     
-    async def handle_select_activity(call: ServiceCall):
-        """Handle the select_activity service call."""
-        entity_id = call.data.get("entity_id")
-        activity_url = call.data.get("activity_url")
+    async def handle_select_activity(call):
+        """Handle the select activity service call."""
+        entity_id = call.data.get(ATTR_ENTITY_ID)
+        activity_url = call.data.get(ATTR_ACTIVITY_URL)
+        
+        if not entity_id or not activity_url:
+            _LOGGER.error("Both entity_id and activity_url are required")
+            return
         
         # Find the coordinator for this entity
-        for entry_id, coord in hass.data[DOMAIN].items():
-            if hasattr(coord, 'entity_id') and coord.entity_id == entity_id:
-                coord.activity_url = activity_url
-                await coord.async_refresh()
-                
-                # Update the config entry
-                new_data = dict(entry.data)
-                new_data[CONF_ACTIVITY_URL] = activity_url
-                hass.config_entries.async_update_entry(entry, data=new_data)
-                break
+        for coordinator in hass.data[DOMAIN].values():
+            if coordinator.entity_id == entity_id:
+                coordinator.activity_url = activity_url
+                await coordinator.async_refresh()
+                return
+    
+    async def handle_respond(call):
+        """Handle the respond service call."""
+        entity_id = call.data.get(ATTR_ENTITY_ID)
+        attendance = call.data.get(ATTR_ATTENDANCE)
+        comment = call.data.get(ATTR_COMMENT, "")
+        guests = call.data.get(ATTR_GUESTS, 0)
+        
+        if not entity_id:
+            _LOGGER.error("entity_id is required")
+            return
+        
+        if attendance not in [ATTENDANCE_YES, ATTENDANCE_NO, ATTENDANCE_COMMENT_ONLY]:
+            _LOGGER.error(f"Invalid attendance value: {attendance}")
+            return
+        
+        # Find the coordinator for this entity
+        for coordinator in hass.data[DOMAIN].values():
+            if coordinator.entity_id == entity_id:
+                await coordinator.async_respond_to_event(attendance, comment, guests)
+                await coordinator.async_refresh()
+                return
     
     hass.services.async_register(
-        DOMAIN, SERVICE_REFRESH, handle_refresh
+        DOMAIN, SERVICE_REFRESH, handle_refresh, schema=vol.Schema({
+            vol.Optional(ATTR_ENTITY_ID): cv.entity_id,
+        })
     )
     
     hass.services.async_register(
-        DOMAIN, SERVICE_SELECT_ACTIVITY, handle_select_activity, schema=SERVICE_SELECT_ACTIVITY_SCHEMA
+        DOMAIN, SERVICE_SELECT_ACTIVITY, handle_select_activity, schema=vol.Schema({
+            vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+            vol.Required(ATTR_ACTIVITY_URL): cv.string,
+        })
+    )
+    
+    hass.services.async_register(
+        DOMAIN, SERVICE_RESPOND, handle_respond, schema=vol.Schema({
+            vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+            vol.Required(ATTR_ATTENDANCE): vol.In([ATTENDANCE_YES, ATTENDANCE_NO, ATTENDANCE_COMMENT_ONLY]),
+            vol.Optional(ATTR_COMMENT): cv.string,
+            vol.Optional(ATTR_GUESTS, default=0): vol.Coerce(int),
+        })
     )
     
     return True
@@ -112,6 +203,7 @@ class BokatDataUpdateCoordinator(DataUpdateCoordinator):
         password: str,
         activity_url: str,
         session: aiohttp.ClientSession,
+        scan_interval: int = DEFAULT_SCAN_INTERVAL,
     ):
         """Initialize the coordinator."""
         self.username = username
@@ -122,11 +214,13 @@ class BokatDataUpdateCoordinator(DataUpdateCoordinator):
         self.selected_activity = None
         self.entity_id = None  # Will be set by the sensor
         
+        update_interval = timedelta(minutes=scan_interval)
+        
         super().__init__(
             hass,
             logger,
             name=DOMAIN,
-            update_interval=SCAN_INTERVAL,
+            update_interval=update_interval,
         )
 
     async def _async_update_data(self):
@@ -223,14 +317,214 @@ class BokatDataUpdateCoordinator(DataUpdateCoordinator):
                 for activity in activities:
                     if activity["url"] == self.activity_url:
                         self.selected_activity = activity
+                        # Fetch participant information for the selected activity
+                        participant_data = await self._fetch_participant_data(self.activity_url)
+                        if participant_data:
+                            self.selected_activity.update(participant_data)
                         break
             # Otherwise, use the first activity
             elif activities:
                 self.selected_activity = activities[0]
+                # Fetch participant information for the first activity
+                participant_data = await self._fetch_participant_data(activities[0]["url"])
+                if participant_data:
+                    self.selected_activity.update(participant_data)
             else:
                 self.selected_activity = None
             
             return {
                 "activities": activities,
                 "selected_activity": self.selected_activity
-            } 
+            }
+            
+    async def _fetch_participant_data(self, activity_url):
+        """Fetch participant data from the activity page."""
+        if not activity_url:
+            return None
+            
+        headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Language": "sv-SE,sv;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Cache-Control": "max-age=0",
+            "Connection": "keep-alive",
+            "Referer": "https://www.bokat.se/userPage.jsp",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            "sec-ch-ua": "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"133\", \"Chromium\";v=\"133\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\""
+        }
+        
+        try:
+            async with self.session.get(activity_url, headers=headers) as response:
+                if response.status != 200:
+                    _LOGGER.error(f"Failed to fetch activity page: {response.status}")
+                    return None
+                
+                html = await response.text()
+                
+                # Parse the HTML to extract participant information
+                soup = BeautifulSoup(html, "html.parser")
+                
+                # Find the participant table
+                participant_table = soup.find("table", {"class": "TableList"})
+                if not participant_table:
+                    _LOGGER.warning("No participant table found on activity page")
+                    return None
+                
+                # Find all participant rows
+                participant_rows = participant_table.find_all("tr", {"class": ["RowOdd", "RowEven"]})
+                
+                participants = []
+                attending_count = 0
+                not_attending_count = 0
+                no_response_count = 0
+                
+                for row in participant_rows:
+                    cells = row.find_all("td")
+                    if len(cells) >= 4:
+                        name = cells[0].text.strip()
+                        status_cell = cells[1]
+                        status_img = status_cell.find("img")
+                        
+                        status = "unknown"
+                        if status_img and "src" in status_img.attrs:
+                            src = status_img["src"]
+                            if "yes.gif" in src:
+                                status = "attending"
+                                attending_count += 1
+                            elif "no.gif" in src:
+                                status = "not_attending"
+                                not_attending_count += 1
+                            else:
+                                status = "no_response"
+                                no_response_count += 1
+                        
+                        comment = cells[2].text.strip() if len(cells) > 2 else ""
+                        timestamp = cells[3].text.strip() if len(cells) > 3 else ""
+                        
+                        participants.append({
+                            "name": name,
+                            "status": status,
+                            "comment": comment,
+                            "timestamp": timestamp
+                        })
+                
+                # Find the answer URL if available
+                answer_url = None
+                answer_link = soup.find("a", string=lambda s: s and "Svara" in s)
+                if answer_link and "href" in answer_link.attrs:
+                    answer_url = f"https://www.bokat.se/{answer_link['href']}"
+                
+                return {
+                    "participants": participants,
+                    "total_participants": len(participants),
+                    "attending_count": attending_count,
+                    "not_attending_count": not_attending_count,
+                    "no_response_count": no_response_count,
+                    "answer_url": answer_url
+                }
+                
+        except Exception as err:
+            _LOGGER.error(f"Error fetching participant data: {err}")
+            return None
+            
+    async def async_respond_to_event(self, attendance, comment, guests):
+        """Respond to an event with attendance status, comment, and guests."""
+        if not self.selected_activity or "answer_url" not in self.selected_activity:
+            _LOGGER.error("No selected activity or answer URL available")
+            return False
+            
+        answer_url = self.selected_activity["answer_url"]
+        if not answer_url:
+            _LOGGER.error("No answer URL available for the selected activity")
+            return False
+            
+        try:
+            # First, get the answer page to extract the form parameters
+            headers = {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Accept-Language": "sv-SE,sv;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Connection": "keep-alive",
+                "Referer": self.activity_url,
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+                "sec-ch-ua": "\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"133\", \"Chromium\";v=\"133\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Windows\""
+            }
+            
+            async with self.session.get(answer_url, headers=headers) as response:
+                if response.status != 200:
+                    _LOGGER.error(f"Failed to fetch answer page: {response.status}")
+                    return False
+                
+                html = await response.text()
+                soup = BeautifulSoup(html, "html.parser")
+                
+                # Find the form and extract hidden fields
+                form = soup.find("form")
+                if not form:
+                    _LOGGER.error("No form found on answer page")
+                    return False
+                
+                # Prepare form data
+                form_data = {}
+                
+                # Add hidden fields
+                for hidden_field in form.find_all("input", {"type": "hidden"}):
+                    if "name" in hidden_field.attrs and "value" in hidden_field.attrs:
+                        form_data[hidden_field["name"]] = hidden_field["value"]
+                
+                # Set attendance status
+                if attendance == ATTENDANCE_YES:
+                    form_data["answer"] = "yes"
+                elif attendance == ATTENDANCE_NO:
+                    form_data["answer"] = "no"
+                else:  # ATTENDANCE_COMMENT_ONLY
+                    # Just update the comment without changing attendance
+                    if "answer" in form_data:
+                        pass  # Keep existing value
+                    else:
+                        form_data["answer"] = ""  # Default to empty if not found
+                
+                # Add comment if provided
+                if comment:
+                    form_data["comment"] = comment
+                
+                # Add guests if attending
+                if attendance == ATTENDANCE_YES and guests > 0:
+                    form_data["guests"] = str(guests)
+                
+                # Find the submit URL
+                action_url = form.get("action", "")
+                if not action_url:
+                    _LOGGER.error("No form action URL found")
+                    return False
+                
+                submit_url = f"https://www.bokat.se/{action_url}"
+                
+                # Submit the form
+                headers["Content-Type"] = "application/x-www-form-urlencoded"
+                headers["Origin"] = "https://www.bokat.se"
+                headers["Referer"] = answer_url
+                
+                async with self.session.post(submit_url, data=form_data, headers=headers) as submit_response:
+                    if submit_response.status != 200:
+                        _LOGGER.error(f"Failed to submit response: {submit_response.status}")
+                        return False
+                    
+                    _LOGGER.info(f"Successfully responded to event with status: {attendance}")
+                    return True
+                    
+        except Exception as err:
+            _LOGGER.error(f"Error responding to event: {err}")
+            return False 

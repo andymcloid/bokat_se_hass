@@ -1,0 +1,7 @@
+{
+    "haConfigPath": "/config/custom_components/bokat_se",
+    "sourceDir": "./custom_components/bokat_se",
+    "restartHomeAssistant": false,
+    "haUrl": "http://localhost:8123",
+    "haToken": ""
+} 

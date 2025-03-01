@@ -6,3 +6,38 @@ deploy.bat
 
 # Ignore token files for security
 **/token.txt
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Home Assistant
+.storage
+.cloud
+.google.token
+
+# Development configuration
+dev_config.json
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db

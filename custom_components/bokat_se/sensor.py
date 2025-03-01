@@ -18,6 +18,12 @@ from .const import (
     ATTR_ACTIVITY_STATUS,
     ATTR_ACTIVITY_URL,
     ATTR_ACTIVITIES,
+    ATTR_PARTICIPANTS,
+    ATTR_TOTAL_PARTICIPANTS,
+    ATTR_ATTENDING_COUNT,
+    ATTR_NOT_ATTENDING_COUNT,
+    ATTR_NO_RESPONSE_COUNT,
+    ATTR_ANSWER_URL,
     DEFAULT_NAME,
     ICON,
 )
@@ -77,6 +83,15 @@ class BokatSensor(CoordinatorEntity, SensorEntity):
             attrs[ATTR_ACTIVITY_NAME] = activity.get("name", "Unknown")
             attrs[ATTR_ACTIVITY_STATUS] = activity.get("status", "Unknown")
             attrs[ATTR_ACTIVITY_URL] = activity.get("url", "Unknown")
+            
+            # Add participant information if available
+            if "participants" in activity:
+                attrs[ATTR_PARTICIPANTS] = activity.get("participants", [])
+                attrs[ATTR_TOTAL_PARTICIPANTS] = activity.get("total_participants", 0)
+                attrs[ATTR_ATTENDING_COUNT] = activity.get("attending_count", 0)
+                attrs[ATTR_NOT_ATTENDING_COUNT] = activity.get("not_attending_count", 0)
+                attrs[ATTR_NO_RESPONSE_COUNT] = activity.get("no_response_count", 0)
+                attrs[ATTR_ANSWER_URL] = activity.get("answer_url", "")
         
         # Add all activities as an attribute
         if self.coordinator.data and self.coordinator.data.get("activities"):

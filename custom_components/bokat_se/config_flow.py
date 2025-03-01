@@ -14,7 +14,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_USERNAME, CONF_PASSWORD, CONF_ACTIVITY_URL, DEFAULT_NAME
+from .const import DOMAIN, CONF_USERNAME, CONF_PASSWORD, CONF_ACTIVITY_URL, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +22,15 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
+    }
+)
+
+STEP_ACTIVITY_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_ACTIVITY_URL): str,
+        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+            vol.Coerce(int), vol.Range(min=5, max=180)
+        ),
     }
 )
 
@@ -113,16 +122,15 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict:
         raise CannotConnect(f"Unexpected error: {err}") from err
 
 
-class BokatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class BokatSeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Bokat.se."""
 
     VERSION = 1
     
     def __init__(self):
         """Initialize the config flow."""
-        self.data = {}
-        self.activities = []
-        self.selected_activity_name = None
+        self._data = {}
+        self._activities = []
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -132,63 +140,54 @@ class BokatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 info = await validate_input(self.hass, user_input)
                 
-                self.data = user_input
-                self.activities = info["activities"]
+                self._data.update(user_input)
+                self._activities = info["activities"]
                 
-                # If we have activities, go to the activity selection step
-                if self.activities:
-                    return await self.async_step_activity()
-                
-                # Otherwise, create the entry with just the login info
-                return self.async_create_entry(
-                    title=f"{DEFAULT_NAME}",
-                    data=self.data
-                )
-                
+                return await self.async_step_activity()
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
+            except Exception:
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
-
+        
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
-
+    
     async def async_step_activity(self, user_input=None):
         """Handle the activity selection step."""
+        errors = {}
+        
         if user_input is not None:
-            activity_url = user_input[CONF_ACTIVITY_URL]
-            self.data[CONF_ACTIVITY_URL] = activity_url
+            self._data.update(user_input)
             
-            # Find the activity name for the selected URL
-            for activity in self.activities:
-                if activity["url"] == activity_url:
-                    self.selected_activity_name = activity["name"]
+            # Create a title based on the activity name
+            for activity in self._activities:
+                if activity["url"] == self._data[CONF_ACTIVITY_URL]:
+                    title = activity["name"]
                     break
+            else:
+                title = DEFAULT_NAME
             
-            # Use the activity name as the title if available
-            title = self.selected_activity_name if self.selected_activity_name else DEFAULT_NAME
-            
-            return self.async_create_entry(
-                title=title,
-                data=self.data
-            )
+            return self.async_create_entry(title=title, data=self._data)
         
         # Create a schema with a dropdown of activities
-        activity_schema = vol.Schema(
-            {
-                vol.Required(CONF_ACTIVITY_URL): vol.In(
-                    {activity["url"]: activity["name"] for activity in self.activities}
-                )
-            }
-        )
+        options = {activity["url"]: activity["name"] for activity in self._activities}
+        
+        if not options:
+            return self.async_abort(reason="no_activities")
+        
+        schema = vol.Schema({
+            vol.Required(CONF_ACTIVITY_URL, default=list(options.keys())[0] if options else ""): vol.In(options),
+            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+                vol.Coerce(int), vol.Range(min=5, max=180)
+            ),
+        })
         
         return self.async_show_form(
-            step_id="activity",
-            data_schema=activity_schema,
+            step_id="activity", data_schema=schema, errors=errors
         )
 
 

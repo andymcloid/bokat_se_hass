@@ -1,21 +1,74 @@
 refresh:
   name: Refresh
-  description: Refresh Bokat.se data
-  target:
-    entity:
-      integration: bokat_se
+  description: Refresh data from Bokat.se.
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity ID of the sensor to refresh. If not provided, all sensors will be refreshed.
+      example: sensor.bokat_se_innebandy_sondag_kvall_tullinge
+      selector:
+        entity:
+          integration: bokat_se
+          domain: sensor
 
 select_activity:
   name: Select Activity
-  description: Select a different activity to track
-  target:
-    entity:
-      integration: bokat_se
+  description: Select a different activity to track.
   fields:
+    entity_id:
+      name: Entity
+      description: The entity ID of the sensor.
+      required: true
+      example: sensor.bokat_se_innebandy_sondag_kvall_tullinge
+      selector:
+        entity:
+          integration: bokat_se
+          domain: sensor
     activity_url:
       name: Activity URL
-      description: URL of the activity to select
+      description: The URL of the activity to select.
       required: true
-      example: "https://www.bokat.se/stat.jsp?eventId=10632653049929&userId=48354544168659"
+      example: https://www.bokat.se/showActivity.jsp?activity=12345
       selector:
-        text: 
+        text:
+
+respond:
+  name: Respond
+  description: Respond to an event with attendance status, comment, and guests.
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity ID of the sensor.
+      required: true
+      example: sensor.bokat_se_innebandy_sondag_kvall_tullinge
+      selector:
+        entity:
+          integration: bokat_se
+          domain: sensor
+    attendance:
+      name: Attendance
+      description: The attendance status.
+      required: true
+      example: "yes"
+      selector:
+        select:
+          options:
+            - "yes"
+            - "no"
+            - "comment_only"
+    comment:
+      name: Comment
+      description: A comment to include with your response.
+      example: "I'll be there!"
+      selector:
+        text:
+    guests:
+      name: Guests
+      description: Number of guests you're bringing (only applicable when attendance is "yes").
+      default: 0
+      example: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          mode: slider 

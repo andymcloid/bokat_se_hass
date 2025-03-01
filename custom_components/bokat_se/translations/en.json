@@ -13,7 +13,8 @@
         "title": "Select Activity",
         "description": "Choose which activity to track",
         "data": {
-          "activity_url": "Activity"
+          "activity_url": "Activity",
+          "scan_interval": "Scan interval (minutes, between 5-180)"
         }
       }
     },
@@ -27,6 +28,54 @@
     },
     "create_entry": {
       "default": "Success! Activity has been added."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Refresh",
+      "description": "Refreshes data from Bokat.se",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The sensor to refresh. Leave empty to refresh all sensors."
+        }
+      }
+    },
+    "select_activity": {
+      "name": "Select Activity",
+      "description": "Select a different activity to track",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The sensor to update"
+        },
+        "activity_url": {
+          "name": "Activity URL",
+          "description": "The URL of the activity to track"
+        }
+      }
+    },
+    "respond": {
+      "name": "Respond",
+      "description": "Respond to an event with attendance status",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The sensor to respond to"
+        },
+        "attendance": {
+          "name": "Attendance",
+          "description": "Your attendance status (yes, no, or comment_only)"
+        },
+        "comment": {
+          "name": "Comment",
+          "description": "Optional comment to include with your response"
+        },
+        "guests": {
+          "name": "Guests",
+          "description": "Number of guests to bring (default: 0)"
+        }
+      }
     }
   }
 } 
