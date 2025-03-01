@@ -1,0 +1,21 @@
+refresh:
+  name: Refresh
+  description: Refresh Bokat.se data
+  target:
+    entity:
+      integration: bokat_se
+
+select_activity:
+  name: Select Activity
+  description: Select a different activity to track
+  target:
+    entity:
+      integration: bokat_se
+  fields:
+    activity_url:
+      name: Activity URL
+      description: URL of the activity to select
+      required: true
+      example: "https://www.bokat.se/stat.jsp?eventId=10632653049929&userId=48354544168659"
+      selector:
+        text: 

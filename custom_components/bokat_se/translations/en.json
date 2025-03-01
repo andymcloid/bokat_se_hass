@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Bokat.se",
+        "description": "Enter your Bokat.se credentials",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      },
+      "activity": {
+        "title": "Select Activity",
+        "description": "Choose which activity to track",
+        "data": {
+          "activity_url": "Activity"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Bokat.se",
+      "invalid_auth": "Invalid username or password",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This account is already configured"
+    }
+  }
+} 

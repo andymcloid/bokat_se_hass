@@ -1,0 +1,11 @@
+{
+  "domain": "bokat_se",
+  "name": "Bokat.se",
+  "documentation": "https://github.com/andymcloid/bokat_se_hass",
+  "dependencies": [],
+  "codeowners": ["@andymcloid"],
+  "requirements": ["beautifulsoup4>=4.9.0"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "version": "0.1.0"
+} 

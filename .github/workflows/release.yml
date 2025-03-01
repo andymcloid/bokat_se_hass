@@ -1,0 +1,58 @@
+name: Create Release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'CHANGELOG.md'
+
+# Add permissions block
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Extract version and changelog
+        id: extract_version
+        run: |
+          # Extract the latest version from CHANGELOG.md
+          VERSION=$(grep -m 1 -oP '## \K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract the changelog for the latest version
+          CHANGELOG=$(awk -v ver="## $VERSION" 'BEGIN{flag=0} $0~ver{flag=1; next} /^## [0-9]+\.[0-9]+\.[0-9]+/{if(flag==1) exit} flag{print}' CHANGELOG.md)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.extract_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.extract_version.outputs.version }}" \
+            --title "Release v${{ steps.extract_version.outputs.version }}" \
+            --notes "${{ steps.extract_version.outputs.changelog }}" \
+            --target "${{ github.sha }}" 
