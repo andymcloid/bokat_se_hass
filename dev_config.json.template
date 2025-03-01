@@ -1,7 +1,0 @@
-{
-    "haConfigPath": "\\\\homeassistant\\config\\custom_components\\bokat_se",
-    "sourceDir": "custom_components\\bokat_se",
-    "restartHomeAssistant": false,
-    "haUrl": "http://homeassistant:8123",
-    "haToken": ""
-} 

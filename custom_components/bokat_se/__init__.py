@@ -58,6 +58,7 @@ def copy_frontend_card(hass: HomeAssistant) -> None:
     # Create the www directory if it doesn't exist
     if not os.path.exists(www_dir):
         os.makedirs(www_dir)
+        _LOGGER.info("Created www directory at %s", www_dir)
     
     # Get the path to the frontend card
     component_dir = os.path.dirname(os.path.dirname(__file__))
@@ -68,38 +69,55 @@ def copy_frontend_card(hass: HomeAssistant) -> None:
         # Copy the card to the www directory
         card_dest = os.path.join(www_dir, "bokat-se-card.js")
         shutil.copy2(card_src, card_dest)
-        _LOGGER.info("Copied Bokat.se card to www directory")
+        _LOGGER.info("Copied Bokat.se card to www directory: %s", card_dest)
         
         # Try to register the card as a resource in Home Assistant
+        resource_url = "/local/bokat-se-card.js"
+        
+        # First method: Try using the resources module directly
         try:
             import homeassistant.components.lovelace.resources as resources
-            resource_url = "/local/bokat-se-card.js"
             resource_type = "module"
             
             # Check if the resource already exists
             if hasattr(resources, "async_get_resource_list") and hasattr(resources, "async_create_resource"):
                 async def register_resource():
-                    resource_list = await resources.async_get_resource_list(hass)
-                    for resource in resource_list:
-                        if resource["url"] == resource_url:
-                            _LOGGER.info("Bokat.se card already registered as a resource")
-                            return
-                    
-                    # Register the resource
                     try:
-                        await resources.async_create_resource(hass, resource_url, resource_type)
-                        _LOGGER.info("Registered Bokat.se card as a resource")
+                        # Wait a bit to ensure Lovelace is fully initialized
+                        await asyncio.sleep(10)
+                        
+                        resource_list = await resources.async_get_resource_list(hass)
+                        for resource in resource_list:
+                            if resource["url"] == resource_url:
+                                _LOGGER.info("Bokat.se card already registered as a resource")
+                                return
+                        
+                        # Register the resource
+                        try:
+                            await resources.async_create_resource(hass, resource_url, resource_type)
+                            _LOGGER.info("Successfully registered Bokat.se card as a resource")
+                        except Exception as e:
+                            _LOGGER.warning("Failed to register Bokat.se card as a resource: %s", e)
+                            _LOGGER.warning("Please manually add the resource in the Lovelace UI:")
+                            _LOGGER.warning("  1. Go to Configuration → Lovelace Dashboards → Resources")
+                            _LOGGER.warning("  2. Add '/local/bokat-se-card.js' as a JavaScript Module")
                     except Exception as e:
-                        _LOGGER.warning(f"Failed to register Bokat.se card as a resource: {e}")
+                        _LOGGER.warning("Error during resource registration: %s", e)
                 
                 # Schedule the registration
                 hass.async_create_task(register_resource())
             else:
                 _LOGGER.warning("Could not register Bokat.se card as a resource: API not available")
+                _LOGGER.warning("Please manually add the resource in the Lovelace UI:")
+                _LOGGER.warning("  1. Go to Configuration → Lovelace Dashboards → Resources")
+                _LOGGER.warning("  2. Add '/local/bokat-se-card.js' as a JavaScript Module")
         except ImportError:
             _LOGGER.warning("Could not register Bokat.se card as a resource: Lovelace resources module not available")
+            _LOGGER.warning("Please manually add the resource in the Lovelace UI:")
+            _LOGGER.warning("  1. Go to Configuration → Lovelace Dashboards → Resources")
+            _LOGGER.warning("  2. Add '/local/bokat-se-card.js' as a JavaScript Module")
     else:
-        _LOGGER.warning("Bokat.se card not found in component directory")
+        _LOGGER.warning("Bokat.se card not found in component directory: %s", card_src)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Bokat.se from a config entry."""

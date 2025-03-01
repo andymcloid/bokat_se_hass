@@ -132,6 +132,15 @@ If the card doesn't appear in your dashboard or you get an error like "Custom el
 
 3. Clear your browser cache and reload the page
 
+4. If using HACS:
+   - HACS does not automatically register the card as a resource
+   - You must manually add the resource as described in step 1
+   - This is a one-time setup step after installing the integration
+
+5. Check Home Assistant logs for any errors related to the card:
+   - Look for messages from the `bokat_se` component
+   - The integration attempts to register the card automatically, but this may not work in all environments
+
 ## Automation Examples
 
 ### Notify when activity status changes
