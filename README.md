@@ -114,6 +114,24 @@ The card provides:
 - Form to respond to the event with attendance status, guest count, and comments
 - List of all activities with the ability to switch between them
 
+### Troubleshooting the Lovelace Card
+
+If the card doesn't appear in your dashboard or you get an error like "Custom element doesn't exist: bokat-se-card", follow these steps:
+
+1. Make sure the card is properly loaded as a resource:
+   - Go to Configuration → Lovelace Dashboards → Resources
+   - Check if `/local/bokat-se-card.js` is listed as a JavaScript module
+   - If not, add it manually by clicking "Add Resource" and entering:
+     - URL: `/local/bokat-se-card.js`
+     - Resource type: JavaScript Module
+
+2. Verify the card file exists:
+   - Check if the file exists at `<config>/www/bokat-se-card.js`
+   - If not, try restarting Home Assistant to trigger the automatic copy process
+   - Or manually copy the file from `custom_components/bokat_se/www/bokat-se-card.js` to `<config>/www/bokat-se-card.js`
+
+3. Clear your browser cache and reload the page
+
 ## Automation Examples
 
 ### Notify when activity status changes
@@ -169,10 +187,10 @@ automation:
 
 ## Development
 
-For development purposes, two scripts are included to help deploy changes to your Home Assistant instance without needing to push to GitHub:
+For development purposes, PowerShell scripts are included in the `dev` directory to help deploy changes to your Home Assistant instance without needing to push to GitHub:
 
-- `dev_deploy.ps1` - PowerShell script for Windows users
-- `dev_deploy.sh` - Bash script for Linux/macOS users
+- `dev/dev_deploy.ps1` - PowerShell script for deploying the integration to Home Assistant
+- `dev/setup_dev.ps1` - PowerShell script for setting up the development environment
 
 These scripts copy the integration files directly to your Home Assistant custom_components directory and the frontend card to the www directory.
 
@@ -199,18 +217,12 @@ Configuration options:
 
 ### Running the Deployment Scripts
 
-#### Windows (PowerShell)
 ```powershell
-.\dev_deploy.ps1
+.\dev\setup_dev.ps1  # Run once to set up the environment
+.\dev\dev_deploy.ps1  # Run to deploy changes to Home Assistant
 ```
 
-#### Linux/macOS (Bash)
-```bash
-chmod +x dev_deploy.sh
-./dev_deploy.sh
-```
-
-Note: For the bash script, you need to have `jq` installed to parse the JSON configuration file. If `jq` is not installed, the script will use default values.
+For more details, see the [Development README](dev/README.md).
 
 ## License
 

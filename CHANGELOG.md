@@ -2,7 +2,7 @@
 
 ## 1.1.0 (2025-03-01)
 
-Initial release
+Initial release with fixes
 
 - Login to Bokat.se with credentials
 - View all activities

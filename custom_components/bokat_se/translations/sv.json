@@ -13,7 +13,8 @@
         "title": "Välj aktivitet",
         "description": "Välj vilken aktivitet du vill följa",
         "data": {
-          "activity_url": "Aktivitet"
+          "activity_url": "Aktivitet",
+          "scan_interval": "Uppdateringsintervall (minuter, mellan 5-180)"
         }
       }
     },
@@ -27,6 +28,54 @@
     },
     "create_entry": {
       "default": "Lyckades! Aktiviteten har lagts till."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Uppdatera",
+      "description": "Uppdaterar data från Bokat.se",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Sensorn att uppdatera. Lämna tomt för att uppdatera alla sensorer."
+        }
+      }
+    },
+    "select_activity": {
+      "name": "Välj aktivitet",
+      "description": "Välj en annan aktivitet att följa",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Sensorn att uppdatera"
+        },
+        "activity_url": {
+          "name": "Aktivitets-URL",
+          "description": "URL:en för aktiviteten att följa"
+        }
+      }
+    },
+    "respond": {
+      "name": "Svara",
+      "description": "Svara på en händelse med närvarostatus",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Sensorn att svara på"
+        },
+        "attendance": {
+          "name": "Närvaro",
+          "description": "Din närvarostatus (yes, no, eller comment_only)"
+        },
+        "comment": {
+          "name": "Kommentar",
+          "description": "Valfri kommentar att inkludera med ditt svar"
+        },
+        "guests": {
+          "name": "Gäster",
+          "description": "Antal gäster att ta med (standard: 0)"
+        }
+      }
     }
   }
 } 

@@ -24,8 +24,12 @@ ATTR_NOT_ATTENDING_COUNT = "not_attending_count"
 ATTR_NO_RESPONSE_COUNT = "no_response_count"
 ATTR_ANSWER_URL = "answer_url"
 
-# Service parameters
+# Service names
+SERVICE_REFRESH = "refresh"
+SERVICE_SELECT_ACTIVITY = "select_activity"
 SERVICE_RESPOND = "respond"
+
+# Service parameters
 ATTR_ENTITY_ID = "entity_id"
 ATTR_ATTENDANCE = "attendance"
 ATTR_COMMENT = "comment"

@@ -41,14 +41,6 @@ _LOGGER = logging.getLogger(__name__)
 # This is no longer used as we get the scan interval from the config entry
 # SCAN_INTERVAL = timedelta(minutes=30)
 
-SERVICE_REFRESH = "refresh"
-SERVICE_SELECT_ACTIVITY = "select_activity"
-
-SERVICE_SELECT_ACTIVITY_SCHEMA = vol.Schema({
-    vol.Required("entity_id"): cv.entity_id,
-    vol.Required("activity_url"): cv.string,
-})
-
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Bokat.se component."""
     hass.data.setdefault(DOMAIN, {})
@@ -59,7 +51,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 def copy_frontend_card(hass: HomeAssistant) -> None:
-    """Copy the frontend card to the www directory."""
+    """Copy the frontend card to the www directory and register it as a resource."""
     # Get the path to the www directory
     www_dir = os.path.join(hass.config.path(), "www")
     
@@ -77,6 +69,35 @@ def copy_frontend_card(hass: HomeAssistant) -> None:
         card_dest = os.path.join(www_dir, "bokat-se-card.js")
         shutil.copy2(card_src, card_dest)
         _LOGGER.info("Copied Bokat.se card to www directory")
+        
+        # Try to register the card as a resource in Home Assistant
+        try:
+            import homeassistant.components.lovelace.resources as resources
+            resource_url = "/local/bokat-se-card.js"
+            resource_type = "module"
+            
+            # Check if the resource already exists
+            if hasattr(resources, "async_get_resource_list") and hasattr(resources, "async_create_resource"):
+                async def register_resource():
+                    resource_list = await resources.async_get_resource_list(hass)
+                    for resource in resource_list:
+                        if resource["url"] == resource_url:
+                            _LOGGER.info("Bokat.se card already registered as a resource")
+                            return
+                    
+                    # Register the resource
+                    try:
+                        await resources.async_create_resource(hass, resource_url, resource_type)
+                        _LOGGER.info("Registered Bokat.se card as a resource")
+                    except Exception as e:
+                        _LOGGER.warning(f"Failed to register Bokat.se card as a resource: {e}")
+                
+                # Schedule the registration
+                hass.async_create_task(register_resource())
+            else:
+                _LOGGER.warning("Could not register Bokat.se card as a resource: API not available")
+        except ImportError:
+            _LOGGER.warning("Could not register Bokat.se card as a resource: Lovelace resources module not available")
     else:
         _LOGGER.warning("Bokat.se card not found in component directory")
 
