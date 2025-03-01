@@ -61,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         
         # Find the coordinator for this entity
         for entry_id, coord in hass.data[DOMAIN].items():
-            if f"sensor.bokat_se_{coord.username.split('@')[0]}" == entity_id:
+            if hasattr(coord, 'entity_id') and coord.entity_id == entity_id:
                 await coord.async_refresh()
                 break
     
@@ -72,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         
         # Find the coordinator for this entity
         for entry_id, coord in hass.data[DOMAIN].items():
-            if f"sensor.bokat_se_{coord.username.split('@')[0]}" == entity_id:
+            if hasattr(coord, 'entity_id') and coord.entity_id == entity_id:
                 coord.activity_url = activity_url
                 await coord.async_refresh()
                 
@@ -120,6 +120,7 @@ class BokatDataUpdateCoordinator(DataUpdateCoordinator):
         self.session = session
         self.activities = []
         self.selected_activity = None
+        self.entity_id = None  # Will be set by the sensor
         
         super().__init__(
             hass,

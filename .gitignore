@@ -1,2 +1,8 @@
-# ignore all directories with the name dev
+﻿# ignore all directories with the name dev
 dev/
+
+# Development deployment files
+deploy.bat
+
+# Ignore token files for security
+**/token.txt

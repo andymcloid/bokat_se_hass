@@ -24,6 +24,9 @@
     },
     "abort": {
       "already_configured": "Detta konto är redan konfigurerat"
+    },
+    "create_entry": {
+      "default": "Lyckades! Aktiviteten har lagts till."
     }
   }
 } 

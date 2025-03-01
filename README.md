@@ -37,7 +37,7 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 
 ## Usage
 
-After configuration, a sensor will be created with the name `sensor.bokat_se_youremail`. This sensor will display the name of the selected activity and will have the following attributes:
+After configuration, a sensor will be created with the name based on your selected activity (e.g., `sensor.bokat_se_innebandy_sondag_kvall_tullinge`). This sensor will display the name of the selected activity and will have the following attributes:
 
 - `activity_name`: The name of the selected activity
 - `activity_status`: The status of the selected activity (number of participants, etc.)
@@ -60,12 +60,12 @@ automation:
   - alias: "Notify when activity status changes"
     trigger:
       - platform: state
-        entity_id: sensor.bokat_se_youremail
+        entity_id: sensor.bokat_se_innebandy_sondag_kvall_tullinge
     action:
       - service: notify.mobile_app
         data:
           title: "Bokat.se Activity Update"
-          message: "{{ state_attr('sensor.bokat_se_youremail', 'activity_status') }}"
+          message: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall_tullinge', 'activity_status') }}"
 ```
 
 ## License

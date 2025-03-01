@@ -24,6 +24,9 @@
     },
     "abort": {
       "already_configured": "This account is already configured"
+    },
+    "create_entry": {
+      "default": "Success! Activity has been added."
     }
   }
 } 

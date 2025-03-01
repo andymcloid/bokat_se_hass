@@ -14,7 +14,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_USERNAME, CONF_PASSWORD, CONF_ACTIVITY_URL
+from .const import DOMAIN, CONF_USERNAME, CONF_PASSWORD, CONF_ACTIVITY_URL, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -122,6 +122,7 @@ class BokatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self.data = {}
         self.activities = []
+        self.selected_activity_name = None
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -140,7 +141,7 @@ class BokatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 
                 # Otherwise, create the entry with just the login info
                 return self.async_create_entry(
-                    title=user_input[CONF_USERNAME],
+                    title=f"{DEFAULT_NAME}",
                     data=self.data
                 )
                 
@@ -159,10 +160,20 @@ class BokatConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_activity(self, user_input=None):
         """Handle the activity selection step."""
         if user_input is not None:
-            self.data[CONF_ACTIVITY_URL] = user_input[CONF_ACTIVITY_URL]
+            activity_url = user_input[CONF_ACTIVITY_URL]
+            self.data[CONF_ACTIVITY_URL] = activity_url
+            
+            # Find the activity name for the selected URL
+            for activity in self.activities:
+                if activity["url"] == activity_url:
+                    self.selected_activity_name = activity["name"]
+                    break
+            
+            # Use the activity name as the title if available
+            title = self.selected_activity_name if self.selected_activity_name else DEFAULT_NAME
             
             return self.async_create_entry(
-                title=self.data[CONF_USERNAME],
+                title=title,
                 data=self.data
             )
         
