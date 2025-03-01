@@ -12,5 +12,5 @@ import './bokat-se-card.js';
 
 var version = "1.0.0";
 console.groupCollapsed(`%cBOKAT-SE-CARD ${version} IS INSTALLED`, "color: green; font-weight: bold"),
-console.log("Readme:", "https://github.com/yourusername/bokat_se"),
+console.log("Readme:", "https://github.com/andymcloid/bokat_se_hass"),
 console.groupEnd();

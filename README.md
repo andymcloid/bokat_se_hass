@@ -5,7 +5,7 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 ## Features
 
 - Login to Bokat.se with your credentials
-- View all your activities
+- View all activities
 - Select which activity to track
 - Display activity status in Home Assistant
 - Regular updates of activity status
@@ -17,7 +17,7 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 1. Make sure [HACS](https://hacs.xyz/) is installed in your Home Assistant instance
 2. Add this repository as a custom repository in HACS:
    - Go to HACS → Integrations → ⋮ → Custom repositories
-   - Add `https://github.com/yourusername/bokat_se` with category "Integration"
+   - Add `https://github.com/andymcloid/bokat_se_hass` with category "Integration"
 3. Install the "Bokat.se" integration from HACS
 4. Restart Home Assistant
 
