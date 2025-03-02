@@ -58,7 +58,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def async_update_data():
         """Fetch data from API."""
         try:
-            return await api.list_activities(username, password)
+            # First, get the list of activities
+            activities = await api.list_activities(username, password)
+            
+            # Then, get detailed info for each activity
+            detailed_activities = []
+            for activity in activities:
+                event_id = activity.get("eventId")
+                if event_id:
+                    # Get detailed info for this activity
+                    activity_info = await api.get_activity_info(event_id)
+                    # Add basic activity info to the detailed info
+                    activity_info.update({
+                        "eventId": event_id,
+                        "group": activity.get("group", "Unknown Group"),
+                        "userId": activity.get("userId", ""),
+                    })
+                    detailed_activities.append(activity_info)
+            
+            return detailed_activities
         except Exception as err:
             _LOGGER.error("Error fetching data: %s", err)
             raise UpdateFailed(f"Error fetching data: {err}") from err

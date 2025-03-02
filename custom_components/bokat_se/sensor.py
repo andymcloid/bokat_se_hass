@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
-import sys
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -29,47 +27,62 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     api = hass.data[DOMAIN][entry.entry_id]["api"]
 
-    async_add_entities([BokatSensor(coordinator, api, entry)], True)
+    # Wait for coordinator to get data
+    await coordinator.async_config_entry_first_refresh()
+    
+    # Create a sensor for each activity
+    sensors = []
+    if coordinator.data:
+        for activity in coordinator.data:
+            sensors.append(BokatActivitySensor(coordinator, api, entry, activity))
+    
+    async_add_entities(sensors, True)
 
 
-class BokatSensor(CoordinatorEntity, SensorEntity):
-    """Representation of a Bokat.se sensor."""
+class BokatActivitySensor(CoordinatorEntity, SensorEntity):
+    """Representation of a Bokat.se activity sensor."""
 
-    def __init__(self, coordinator, api, entry):
+    def __init__(self, coordinator, api, entry, activity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._api = api
         self._entry = entry
-        self._attr_name = f"Bokat {entry.data['username']}"
-        self._attr_unique_id = f"bokat_{entry.data['username']}"
+        self._activity = activity
+        self._event_id = activity.get("eventId", "")
+        
+        # Set name and unique_id based on activity name and event_id
+        activity_name = activity.get("name", "Unknown")
+        group_name = activity.get("group", "Unknown Group")
+        self._attr_name = f"Bokat {activity_name}"
+        self._attr_unique_id = f"bokat_{self._event_id}"
+    
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        if not self.coordinator.last_update_success:
+            return False
+            
+        # Check if this activity is still in the coordinator data
+        if self.coordinator.data:
+            for activity in self.coordinator.data:
+                if activity.get("eventId") == self._event_id:
+                    self._activity = activity
+                    return True
+        return False
 
     @property
     def native_value(self) -> str:
         """Return the state of the sensor."""
-        if not self.coordinator.data:
-            return "No data"
-        
-        activities = self.coordinator.data
-        return f"{len(activities)} activities"
+        # Return totalAttending as the state
+        return str(self._activity.get("total_attending", 0))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
-        if not self.coordinator.data:
-            return {}
+        # Return all activity info as attributes, including participants
+        attributes = dict(self._activity)
         
-        activities = self.coordinator.data
-        
-        # Format activities for display
-        formatted_activities = []
-        for activity in activities:
-            formatted_activities.append({
-                "name": activity.get("name", "Unknown"),
-                "group": activity.get("group", "Unknown Group"),
-                "eventId": activity.get("eventId", ""),
-                "userId": activity.get("userId", ""),
-            })
-        
-        return {
-            "activities": formatted_activities,
-        } 
+        # Keep the full participants list for the card
+        # No need to remove participants or add participant_count
+            
+        return attributes 

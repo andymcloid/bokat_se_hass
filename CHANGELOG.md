@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.2 (2025-03-01)
+## 1.1.3 (2025-03-01)
 
 Initial release with fixes
 
