@@ -20,8 +20,11 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-# Import from the new location
-from ..bokat_se_lib import BokatAPI
+# Try to import from the HACS location first, then fall back to development location
+try:
+    from ._lib import BokatAPI
+except ImportError:
+    from ..bokat_se_lib import BokatAPI
 
 from .const import DOMAIN, SCAN_INTERVAL
 

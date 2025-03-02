@@ -10,8 +10,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-# Import from the new location
-from ..bokat_se_lib import BokatAPI
+# Try to import from the HACS location first, then fall back to development location
+try:
+    from ._lib import BokatAPI
+except ImportError:
+    from ..bokat_se_lib import BokatAPI
 
 from .const import DOMAIN
 
