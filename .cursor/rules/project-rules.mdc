@@ -1,0 +1,38 @@
+---
+description: Python rules
+globs: *.py
+alwaysApply: false
+---
+# Coding Style Rules for Bokat.se Project
+
+1. Avoid nested if statements - use early returns instead
+   - Check for error conditions first and return early
+   - Use positive conditions for the main flow
+
+2. Keep indentation levels minimal
+   - Maximum of 2-3 levels of indentation per function
+   - Extract complex logic into separate functions
+
+3. Use guard clauses
+   - Check for invalid conditions at the beginning of functions
+   - Return early if preconditions are not met
+
+4. Function structure
+   - Functions should do one thing and do it well
+   - Keep functions under 50 lines where possible
+   - Extract reusable logic into helper functions
+
+5. Variable naming
+   - Use descriptive variable names
+   - Prefix boolean variables with 'is_', 'has_', etc.
+   - Use snake_case for variables and functions
+
+6. Error handling
+   - Log errors with appropriate level (debug, info, warning, error)
+   - Include context in error messages
+   - Return meaningful values on error (empty list, None, etc.)
+
+7. Comments and documentation
+   - Document function purpose, parameters, and return values
+   - Add comments for complex logic
+   - Keep comments up-to-date with code changes

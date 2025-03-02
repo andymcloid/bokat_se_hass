@@ -17,7 +17,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class BokatAPI:
+
     """API client for Bokat.se."""
+    base_url = "https://www.bokat.se/"
     
     def __init__(self, session: Optional[aiohttp.ClientSession] = None) -> None:
         """Initialize the API client.
@@ -64,11 +66,9 @@ class BokatAPI:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
         }
-        url = "https://www.bokat.se/userPage.jsp"
+        url = self.base_url + "userPage.jsp"
 
         try:
-            _LOGGER.debug("Attempting to log in to Bokat.se with username: %s", username)
-            
             # First, try to access the userPage.jsp to get any required cookies
             async with self._session.get(
                 url=url,
@@ -132,10 +132,10 @@ class BokatAPI:
                     # Check for the specific header that indicates successful login
                     header = soup.find('h1', {'class': 'HeaderLarge'})
                     if header and 'Användarsida' in header.text:
-                        _LOGGER.info("Login successful.")
+                        _LOGGER.info("Login successful for %s", username)
                         return soup
                     else:
-                        _LOGGER.error("Login failed.")
+                        _LOGGER.error("Login failed for %s", username)
                         return None
 
         except Exception as e:
@@ -163,13 +163,9 @@ class BokatAPI:
             _LOGGER.error("Failed to authenticate with Bokat.se")
             return []
         
-        test = self._parse_activities(soup)
-        ## PLACE HOLDER FOR FINDING ALL GROUP NAMES + THEIR URLS STARTING WITH stat.jsp
-        _LOGGER.debug(test)
-        return []
+        activities = self._parse_activities(soup)
+        return activities
 
-    
-    
     def _parse_activities(self, soup: BeautifulSoup) -> List[Dict[str, str]]:
         """Parse activities from HTML using BeautifulSoup.
         
@@ -181,254 +177,76 @@ class BokatAPI:
         """
         activities = []
         
-        # First try to find activities in the userPage.jsp format (most common)
-        _LOGGER.debug("Trying to parse activities in userPage.jsp format")
+        # Create a mapping of all activity names
+        activity_names = {}
         
-        # Look for the activities table with header "Aktiviteter"
-        # Using find method instead of select with :contains to avoid deprecation warning
-        activities_header = None
-        for header in soup.find_all('th', class_='RowHeader'):
-            if 'Aktiviteter' in header.text:
-                activities_header = header
-                break
-                
-        if activities_header:
-            _LOGGER.debug("Found activities header")
-            activities_table = activities_header.find_parent('table')
-            if activities_table:
-                _LOGGER.debug("Found activities table")
-                
-                # In userPage.jsp, activities are grouped in sets of rows
-                # Each activity has multiple rows with different information
-                rows = activities_table.select('tr')
-                
-                current_activity = {}
-                for i, row in enumerate(rows):
-                    # Skip the header row
-                    if row.find('th', class_='RowHeader'):
-                        continue
-                    
-                    # Check if this is a row with activity name
-                    activity_link = row.select_one('a[href*="stat.jsp"]')
-                    if activity_link:
-                        # If we have a previous activity, add it to the list
-                        if current_activity and 'name' in current_activity and 'url' in current_activity:
-                            activities.append(current_activity)
-                        
-                        # Start a new activity
-                        href = activity_link.get('href')
-                        url = href
-                        if not url.startswith('http'):
-                            url = f"https://www.bokat.se/{url}"
-                        
-                        current_activity = {
-                            "name": "",  # Will be filled from the activity row
-                            "url": url,
-                            "group": "",  # Will be filled if available
-                            "date_time": "",  # Will be filled if available
-                        }
-                    
-                    # Look for activity details in the cells
-                    cells = row.select('td')
-                    if len(cells) >= 2:
-                        # Check for different types of information
-                        label_cell = cells[1] if len(cells) > 1 else None
-                        value_cell = cells[2] if len(cells) > 2 else None
-                        
-                        if label_cell and value_cell:
-                            label_text = label_cell.text.strip()
-                            value_text = value_cell.text.strip()
-                            
-                            if "Grupp" in label_text and current_activity:
-                                current_activity["group"] = value_text
-                            elif "Aktivitet" in label_text and current_activity:
-                                current_activity["name"] = value_text
-                            elif "Tid" in label_text and current_activity:
-                                current_activity["date_time"] = value_text
-                
-                # Add the last activity if we have one
-                if current_activity and 'name' in current_activity and 'url' in current_activity:
-                    activities.append(current_activity)
-        
-        # If we found activities in the userPage.jsp format, return them
-        if activities:
-            _LOGGER.debug("Found %d activities in userPage.jsp format", len(activities))
-            return activities
-        
-        # If no activities found in userPage.jsp format, try other formats
-        
-        # Try to find activities in the main content area
-        content_div = soup.select_one('#content, .content, main')
-        if content_div:
-            _LOGGER.debug("Found main content area, searching for activities")
-            
-            # Look for activity links directly
-            activity_links = content_div.select('a[href*="stat.jsp"], a[href*="eventId"]')
-            for link in activity_links:
-                name = link.text.strip()
-                href = link.get('href')
-                
-                # Skip empty links or non-activity links
-                if not name or not href:
+        # Find all activity names first
+        for row in soup.find_all('tr'):
+            for td in row.find_all('td'):
+                b_tag = td.find('b')
+                if not b_tag or "Aktivitet:" not in b_tag.text:
                     continue
+                    
+                next_td = td.find_next_sibling('td')
+                if not next_td:
+                    continue
+                    
+                # Get the activity name and store its row index
+                activity_name = next_td.text.strip()
+                if activity_name:
+                    # Store the row object for later reference
+                    activity_names[activity_name] = row
+        
+        # Now find all stat.jsp links and match them with the closest activity name
+        for row in soup.find_all('tr'):
+            link = row.find('a', href=lambda href: href and 'stat.jsp' in href)
+            if not link:
+                continue
                 
-                # Clean up the URL
-                url = href
-                if not url.startswith('http'):
-                    url = f"https://www.bokat.se/{url}"
-                
-                _LOGGER.debug("Found activity: %s at %s", name, url)
+            href = link.get('href')
+            
+            # Ensure URL is properly formatted with base URL
+            if href and not href.startswith('http'):
+                if href.startswith('/'):
+                    href = f"{self.base_url.rstrip('/')}{href}"
+                else:
+                    href = f"{self.base_url}{href}"
+            
+            # Find the closest activity name
+            closest_activity = None
+            min_distance = float('inf')
+            
+            for name, name_row in activity_names.items():
+                # Calculate distance between rows (approximate)
+                try:
+                    name_index = list(soup.find_all('tr')).index(name_row)
+                    link_index = list(soup.find_all('tr')).index(row)
+                    distance = abs(link_index - name_index)
+                    
+                    if distance < min_distance:
+                        min_distance = distance
+                        closest_activity = name
+                except ValueError:
+                    continue
+            
+            # If we found a close activity name and the distance is reasonable
+            if closest_activity and min_distance < 15:  # Adjust threshold as needed
                 activities.append({
-                    "name": name,
-                    "url": url,
+                    "name": closest_activity,
+                    "url": href
                 })
-        
-        # If we didn't find activities in the content area, try tables
-        if not activities:
-            _LOGGER.debug("No activities found in content area, searching tables")
-            
-            # Look for activity tables - more specific selector
-            tables = soup.select('table.activities, table.events, table.list, table')
-            _LOGGER.debug("Found %d tables in the HTML", len(tables))
-            
-            for i, table in enumerate(tables):
-                # Look for rows with links to activities
-                rows = table.select('tr')
-                _LOGGER.debug("Table %d: Found %d rows", i+1, len(rows))
                 
-                for row in rows:
-                    links = row.select('a[href*="stat.jsp"], a[href*="eventId"]')
-                    for link in links:
-                        name = link.text.strip()
-                        href = link.get('href')
-                        
-                        # Skip empty links
-                        if not name or not href:
-                            continue
-                        
-                        # Clean up the URL
-                        url = href
-                        if not url.startswith('http'):
-                            url = f"https://www.bokat.se/{url}"
-                        
-                        _LOGGER.debug("Found activity: %s at %s", name, url)
-                        activities.append({
-                            "name": name,
-                            "url": url,
-                        })
-        
-        # If we still didn't find activities, try a more general approach
-        if not activities:
-            _LOGGER.debug("No activities found in tables, trying general approach")
-            
-            # Look for any links that might be activities
-            all_links = soup.select('a[href*="stat.jsp"], a[href*="eventId"]')
-            for link in all_links:
-                name = link.text.strip()
-                href = link.get('href')
-                
-                # Skip empty links
-                if not name or not href:
-                    continue
-                
-                # Clean up the URL
-                url = href
-                if not url.startswith('http'):
-                    url = f"https://www.bokat.se/{url}"
-                
-                _LOGGER.debug("Found activity: %s at %s", name, url)
-                activities.append({
-                    "name": name,
-                    "url": url,
-                })
-        
-        # Try to find activities in the app format
-        if not activities:
-            _LOGGER.debug("No activities found in standard formats, trying app format")
-            
-            # Look for activity cards or list items
-            activity_items = soup.select('.activity-item, .event-item, .card, .list-item')
-            if activity_items:
-                _LOGGER.debug("Found %d activity items", len(activity_items))
-                
-                for item in activity_items:
-                    # Try to find the activity name and link
-                    link = item.select_one('a')
-                    if not link:
-                        continue
-                    
-                    name = link.text.strip()
-                    href = link.get('href')
-                    
-                    # Skip empty links
-                    if not name or not href:
-                        continue
-                    
-                    # Clean up the URL
-                    url = href
-                    if not url.startswith('http'):
-                        url = f"https://www.bokat.se/{url}"
-                    
-                    _LOGGER.debug("Found activity: %s at %s", name, url)
-                    activities.append({
-                        "name": name,
-                        "url": url,
-                    })
-            
-            # Try to find activities in a JSON script tag
-            script_tags = soup.select('script')
-            for script in script_tags:
-                script_text = script.string
-                if not script_text:
-                    continue
-                
-                # Look for JSON data in the script
-                if 'activities' in script_text or 'events' in script_text:
-                    _LOGGER.debug("Found script with potential activity data")
-                    
-                    try:
-                        # Try to extract JSON data
-                        json_start = script_text.find('{')
-                        json_end = script_text.rfind('}') + 1
-                        
-                        if json_start >= 0 and json_end > json_start:
-                            json_data = script_text[json_start:json_end]
-                            data = json.loads(json_data)
-                            
-                            # Look for activities or events in the data
-                            if 'activities' in data:
-                                _LOGGER.debug("Found activities in JSON data")
-                                for activity in data['activities']:
-                                    if 'name' in activity and 'url' in activity:
-                                        activities.append(activity)
-                                    elif 'name' in activity and 'id' in activity:
-                                        url = f"https://www.bokat.se/stat.jsp?eventId={activity['id']}"
-                                        activities.append({
-                                            "name": activity['name'],
-                                            "url": url,
-                                        })
-                            elif 'events' in data:
-                                _LOGGER.debug("Found events in JSON data")
-                                for event in data['events']:
-                                    if 'name' in event and 'url' in event:
-                                        activities.append(event)
-                                    elif 'name' in event and 'id' in event:
-                                        url = f"https://www.bokat.se/stat.jsp?eventId={event['id']}"
-                                        activities.append({
-                                            "name": event['name'],
-                                            "url": url,
-                                        })
-                    except Exception as e:
-                        _LOGGER.debug("Error parsing JSON data: %s", e)
+                # Remove this activity from the mapping to avoid duplicates
+                activity_names.pop(closest_activity, None)
         
         if not activities:
             _LOGGER.warning("No activities found in the HTML")
-            # Log the entire HTML for debugging
-            _LOGGER.debug("HTML content: %s", soup.prettify())
-        
+        else:
+            activity_names_list = [activity["name"] for activity in activities]
+            _LOGGER.info("Found %d activities: %s", len(activities), ", ".join(activity_names_list))
+            
         return activities
     
-
 # Convenience functions
 async def list_activities(username: str, password: str) -> List[Dict[str, str]]:
     """List all activities for the user.
