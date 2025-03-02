@@ -177,29 +177,10 @@ class BokatAPI:
         """
         activities = []
         
-        # Create a mapping of all activity names and their rows
-        activity_data = {}
+        # First pass: find all activity names and their groups
+        activity_names = []
+        activity_groups = {}
         
-        # First pass: find all group names
-        group_names = {}
-        current_group = None
-        
-        for row in soup.find_all('tr'):
-            # Look for group name
-            for td in row.find_all('td'):
-                b_tag = td.find('b')
-                if not b_tag or "Grupp:" not in b_tag.text:
-                    continue
-                    
-                next_td = td.find_next_sibling('td')
-                if not next_td:
-                    continue
-                    
-                current_group = next_td.text.strip()
-                # Store the row index for reference
-                group_names[row] = current_group
-        
-        # Second pass: find all activity names and associate with groups
         for row in soup.find_all('tr'):
             # Look for activity name
             for td in row.find_all('td'):
@@ -216,96 +197,74 @@ class BokatAPI:
                 if not activity_name:
                     continue
                 
-                # Find the closest group name by looking at previous rows
-                closest_group = None
-                current_row = row
+                # Add to our list of activities in order
+                if activity_name not in activity_names:
+                    activity_names.append(activity_name)
+            
+            # Look for group name
+            for td in row.find_all('td'):
+                b_tag = td.find('b')
+                if not b_tag or "Grupp:" not in b_tag.text:
+                    continue
+                    
+                next_td = td.find_next_sibling('td')
+                if not next_td:
+                    continue
+                    
+                group_name = next_td.text.strip()
                 
-                # Look back up to 10 rows to find the group name
-                for _ in range(10):
-                    prev_row = current_row.find_previous_sibling('tr')
-                    if not prev_row:
-                        break
-                        
-                    if prev_row in group_names:
-                        closest_group = group_names[prev_row]
-                        break
-                        
-                    current_row = prev_row
-                
-                # Store activity data with group name
-                activity_data[activity_name] = {
-                    "name": activity_name,
-                    "group": closest_group or "Unknown Group"
-                }
-                # Store the row for later reference
-                activity_data[activity_name]["row"] = row
+                # Associate with the most recently found activity
+                if activity_names and activity_names[-1] not in activity_groups:
+                    activity_groups[activity_names[-1]] = group_name
         
-        # Third pass: find all stat.jsp links and extract eventId and userId
-        for row in soup.find_all('tr'):
-            link = row.find('a', href=lambda href: href and 'stat.jsp' in href)
-            if not link:
-                continue
-                
+        # Second pass: find all stat.jsp links in order
+        stat_links = []
+        for link in soup.find_all('a', href=lambda href: href and 'stat.jsp' in href):
             href = link.get('href')
-            
-            # Extract eventId and userId from URL
-            event_id = None
-            user_id = None
-            
-            # Parse URL parameters
             if href:
-                # Extract eventId
+                # Ensure URL is properly formatted with base URL
+                if not href.startswith('http'):
+                    if href.startswith('/'):
+                        href = f"{self.base_url.rstrip('/')}{href}"
+                    else:
+                        href = f"{self.base_url}{href}"
+                
+                # Extract eventId and userId
+                event_id = None
+                user_id = None
+                
                 event_id_match = re.search(r'eventId=(\d+)', href)
                 if event_id_match:
                     event_id = event_id_match.group(1)
                 
-                # Extract userId
                 user_id_match = re.search(r'userId=(\d+)', href)
                 if user_id_match:
                     user_id = user_id_match.group(1)
-            
-            # Ensure URL is properly formatted with base URL
-            if href and not href.startswith('http'):
-                if href.startswith('/'):
-                    href = f"{self.base_url.rstrip('/')}{href}"
-                else:
-                    href = f"{self.base_url}{href}"
-            
-            # Find the closest activity name
-            closest_activity = None
-            min_distance = float('inf')
-            
-            for name, data in activity_data.items():
-                # Calculate distance between rows (approximate)
-                try:
-                    name_row = data["row"]
-                    name_index = list(soup.find_all('tr')).index(name_row)
-                    link_index = list(soup.find_all('tr')).index(row)
-                    distance = abs(link_index - name_index)
-                    
-                    if distance < min_distance:
-                        min_distance = distance
-                        closest_activity = name
-                except ValueError:
-                    continue
-            
-            # If we found a close activity name and the distance is reasonable
-            if closest_activity and min_distance < 15:  # Adjust threshold as needed
-                # Get the activity data
-                activity = activity_data[closest_activity].copy()
                 
-                # Add URL, eventId, and userId
-                activity["url"] = href
-                activity["eventId"] = event_id
-                activity["userId"] = user_id
+                stat_links.append({
+                    "url": href,
+                    "eventId": event_id,
+                    "userId": user_id
+                })
+        
+        # Log what we found
+        _LOGGER.info("Found %d activity names: %s", len(activity_names), ", ".join(activity_names))
+        _LOGGER.info("Found %d stat.jsp links", len(stat_links))
+        
+        # Match activities with links in order
+        for i, activity_name in enumerate(activity_names):
+            if i < len(stat_links):
+                link_data = stat_links[i]
                 
-                # Remove the row reference before adding to results
-                activity.pop("row", None)
+                activity = {
+                    "name": activity_name,
+                    "group": activity_groups.get(activity_name, "Unknown Group"),
+                    "url": link_data["url"],
+                    "eventId": link_data["eventId"],
+                    "userId": link_data["userId"]
+                }
                 
                 activities.append(activity)
-                
-                # Remove this activity from the mapping to avoid duplicates
-                activity_data.pop(closest_activity, None)
         
         if not activities:
             _LOGGER.warning("No activities found in the HTML")
@@ -315,6 +274,163 @@ class BokatAPI:
             
         return activities
     
+    async def get_activity_info(self, event_id: str) -> Dict[str, Any]:
+        """Get detailed information about an activity.
+        
+        Args:
+            event_id: The ID of the event to get information for
+            
+        Returns:
+            Dict[str, Any]: Activity information including participants
+        """
+        url = f"{self.base_url}statPrint.jsp?eventId={event_id}"
+        
+        _LOGGER.info("Fetching activity info for event ID %s", event_id)
+        
+        async with self._session.get(url, cookies=self._cookies) as response:
+            if response.status != 200:
+                _LOGGER.error("Failed to get activity info: %s", response.status)
+                return {
+                    "error": f"Failed to get activity info: {response.status}",
+                    "attendees": 0,
+                    "no_reply": 0,
+                    "rejects": 0,
+                    "participants": []
+                }
+            
+            html = await response.text()
+            soup = BeautifulSoup(html, "html.parser")
+            
+            return self._parse_activity_info(soup)
+    
+    def _parse_activity_info(self, soup: BeautifulSoup) -> Dict[str, Any]:
+        """Parse activity information from HTML using BeautifulSoup.
+        
+        Args:
+            soup: BeautifulSoup object with the HTML content
+            
+        Returns:
+            Dict[str, Any]: Activity information including participants
+        """
+        result = {
+            "name": "",
+            "attendees": 0,
+            "no_reply": 0,
+            "rejects": 0,
+            "guests": 0,
+            "participants": []
+        }
+        
+        # Get activity name from h1 tag
+        h1 = soup.find('h1')
+        if h1:
+            result["name"] = h1.text.strip()
+        
+        # Parse summary information
+        summary_text = ""
+        summary = soup.find('td', align='center', text=lambda t: t and 'Sammanställning' in t)
+        if summary:
+            summary_text = summary.text.strip()
+            
+            # Extract numbers from summary
+            invited_match = re.search(r'Av\s+<b>(\d+)</b>\s+inbjudna', str(summary))
+            yes_match = re.search(r'har\s+<b>(\d+)</b>\s+tackat\s+ja', str(summary))
+            no_match = re.search(r'<b>(\d+)</b>\s+nej', str(summary))
+            no_reply_match = re.search(r'och\s+<b>(\d+)</b>\s+har\s+inte\s+svarat', str(summary))
+            guests_match = re.search(r'<b>(\d+)</b>\s+gäster/extra', str(summary))
+            
+            if invited_match:
+                result["invited"] = int(invited_match.group(1))
+            if yes_match:
+                result["attendees"] = int(yes_match.group(1))
+            if no_match:
+                result["rejects"] = int(no_match.group(1))
+            if no_reply_match:
+                result["no_reply"] = int(no_reply_match.group(1))
+            if guests_match:
+                result["guests"] = int(guests_match.group(1))
+        
+        # Parse participants
+        participants = []
+        
+        # Find the table with participants
+        participant_table = soup.find('table', {'class': 'Text', 'width': '710'})
+        if participant_table:
+            rows = participant_table.find_all('tr')
+            
+            for row in rows:
+                cells = row.find_all('td')
+                if len(cells) < 4:
+                    continue
+                
+                # Skip header row
+                if cells[0].find('th'):
+                    continue
+                
+                # Skip separator rows
+                if 'cell' in cells[0].get('id', ''):
+                    continue
+                
+                # Get status
+                status_cell = cells[0].find('table')
+                status = "NoReply"
+                if status_cell:
+                    status_text = status_cell.text.strip()
+                    if "Ja!" in status_text:
+                        status = "Attending"
+                    elif "Nej!" in status_text:
+                        status = "NotAttending"
+                    elif status_text.strip() == "":
+                        # Check if there's a comment but no yes/no
+                        comment_cell = cells[3].text.strip()
+                        if comment_cell and comment_cell != "&nbsp;":
+                            status = "OnlyComment"
+                        else:
+                            status = "NoReply"
+                
+                # Get name and timestamp
+                name_cell = cells[1].text.strip()
+                name = name_cell
+                timestamp = ""
+                
+                # Extract timestamp if present (format: "Name\n(YYYY-MM-DD HH:MM)")
+                timestamp_match = re.search(r'(.*?)(?:\s*\n\s*\((.*?)\))?$', name_cell, re.DOTALL)
+                if timestamp_match:
+                    name = timestamp_match.group(1).strip()
+                    if timestamp_match.group(2):
+                        timestamp = timestamp_match.group(2).strip()
+                
+                # Get guests
+                guests = 0
+                guests_cell = cells[2].text.strip()
+                if guests_cell and guests_cell != "&nbsp;":
+                    guests_match = re.search(r'\+(\d+)', guests_cell)
+                    if guests_match:
+                        guests = int(guests_match.group(1))
+                
+                # Get comment
+                comment = cells[3].text.strip()
+                if comment == "&nbsp;":
+                    comment = ""
+                
+                participant = {
+                    "name": name,
+                    "timestamp": timestamp,
+                    "status": status,
+                    "comment": comment,
+                    "guests": guests
+                }
+                
+                participants.append(participant)
+        
+        result["participants"] = participants
+        
+        _LOGGER.info("Parsed activity info for '%s': %d attendees, %d rejects, %d no reply, %d guests", 
+                    result["name"], result["attendees"], result["rejects"], 
+                    result["no_reply"], result["guests"])
+        
+        return result
+
 # Convenience functions
 async def list_activities(username: str, password: str) -> List[Dict[str, str]]:
     """List all activities for the user.
@@ -328,6 +444,19 @@ async def list_activities(username: str, password: str) -> List[Dict[str, str]]:
     """
     async with BokatAPI() as api:
         return await api.list_activities(username, password)
+    
+async def get_activity_info(event_id: str) -> List[Dict[str, Any]]:
+    """Get detailed information about an activity.
+    
+    Args:
+        event_id: The ID of the event to get information for
+        
+    Returns:
+        Dict[str, Any]: Activity information including participants
+    """
+    async with BokatAPI() as api:
+        return await api.get_activity_info(event_id)
+
 
 
 # Command line interface
