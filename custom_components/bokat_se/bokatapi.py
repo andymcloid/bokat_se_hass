@@ -173,15 +173,35 @@ class BokatAPI:
             soup: BeautifulSoup object with the HTML content
             
         Returns:
-            List[Dict[str, str]]: A list of activities with name and URL
+            List[Dict[str, str]]: A list of activities with name, URL, eventId, userId, and group
         """
         activities = []
         
-        # Create a mapping of all activity names
-        activity_names = {}
+        # Create a mapping of all activity names and their rows
+        activity_data = {}
         
-        # Find all activity names first
+        # First pass: find all group names
+        group_names = {}
+        current_group = None
+        
         for row in soup.find_all('tr'):
+            # Look for group name
+            for td in row.find_all('td'):
+                b_tag = td.find('b')
+                if not b_tag or "Grupp:" not in b_tag.text:
+                    continue
+                    
+                next_td = td.find_next_sibling('td')
+                if not next_td:
+                    continue
+                    
+                current_group = next_td.text.strip()
+                # Store the row index for reference
+                group_names[row] = current_group
+        
+        # Second pass: find all activity names and associate with groups
+        for row in soup.find_all('tr'):
+            # Look for activity name
             for td in row.find_all('td'):
                 b_tag = td.find('b')
                 if not b_tag or "Aktivitet:" not in b_tag.text:
@@ -191,19 +211,58 @@ class BokatAPI:
                 if not next_td:
                     continue
                     
-                # Get the activity name and store its row index
+                # Get the activity name
                 activity_name = next_td.text.strip()
-                if activity_name:
-                    # Store the row object for later reference
-                    activity_names[activity_name] = row
+                if not activity_name:
+                    continue
+                
+                # Find the closest group name by looking at previous rows
+                closest_group = None
+                current_row = row
+                
+                # Look back up to 10 rows to find the group name
+                for _ in range(10):
+                    prev_row = current_row.find_previous_sibling('tr')
+                    if not prev_row:
+                        break
+                        
+                    if prev_row in group_names:
+                        closest_group = group_names[prev_row]
+                        break
+                        
+                    current_row = prev_row
+                
+                # Store activity data with group name
+                activity_data[activity_name] = {
+                    "name": activity_name,
+                    "group": closest_group or "Unknown Group"
+                }
+                # Store the row for later reference
+                activity_data[activity_name]["row"] = row
         
-        # Now find all stat.jsp links and match them with the closest activity name
+        # Third pass: find all stat.jsp links and extract eventId and userId
         for row in soup.find_all('tr'):
             link = row.find('a', href=lambda href: href and 'stat.jsp' in href)
             if not link:
                 continue
                 
             href = link.get('href')
+            
+            # Extract eventId and userId from URL
+            event_id = None
+            user_id = None
+            
+            # Parse URL parameters
+            if href:
+                # Extract eventId
+                event_id_match = re.search(r'eventId=(\d+)', href)
+                if event_id_match:
+                    event_id = event_id_match.group(1)
+                
+                # Extract userId
+                user_id_match = re.search(r'userId=(\d+)', href)
+                if user_id_match:
+                    user_id = user_id_match.group(1)
             
             # Ensure URL is properly formatted with base URL
             if href and not href.startswith('http'):
@@ -216,9 +275,10 @@ class BokatAPI:
             closest_activity = None
             min_distance = float('inf')
             
-            for name, name_row in activity_names.items():
+            for name, data in activity_data.items():
                 # Calculate distance between rows (approximate)
                 try:
+                    name_row = data["row"]
                     name_index = list(soup.find_all('tr')).index(name_row)
                     link_index = list(soup.find_all('tr')).index(row)
                     distance = abs(link_index - name_index)
@@ -231,13 +291,21 @@ class BokatAPI:
             
             # If we found a close activity name and the distance is reasonable
             if closest_activity and min_distance < 15:  # Adjust threshold as needed
-                activities.append({
-                    "name": closest_activity,
-                    "url": href
-                })
+                # Get the activity data
+                activity = activity_data[closest_activity].copy()
+                
+                # Add URL, eventId, and userId
+                activity["url"] = href
+                activity["eventId"] = event_id
+                activity["userId"] = user_id
+                
+                # Remove the row reference before adding to results
+                activity.pop("row", None)
+                
+                activities.append(activity)
                 
                 # Remove this activity from the mapping to avoid duplicates
-                activity_names.pop(closest_activity, None)
+                activity_data.pop(closest_activity, None)
         
         if not activities:
             _LOGGER.warning("No activities found in the HTML")
