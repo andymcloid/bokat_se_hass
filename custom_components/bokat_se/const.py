@@ -1,6 +1,7 @@
 """Constants for the Bokat.se integration."""
 
 DOMAIN = "bokat_se"
+SCAN_INTERVAL = 3600  # 1 hour in seconds
 
 # Configuration
 CONF_USERNAME = "username"

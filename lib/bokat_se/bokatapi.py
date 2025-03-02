@@ -354,7 +354,7 @@ class BokatAPI:
             name_match = re.search(r'<td class="TextSmall" align="left">(.*?)</td>', row)
             if not name_match:
                 continue
-            
+                
             name_text = name_match.group(1).strip()
             
             # Split name and timestamp

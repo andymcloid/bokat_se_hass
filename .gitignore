@@ -1,12 +1,6 @@
 ﻿# ignore all directories with the name dev
 dev/
 
-# Development deployment files
-deploy.bat
-
-# Ignore token files for security
-**/token.txt
-
 # Python cache files
 __pycache__/
 *.py[cod]

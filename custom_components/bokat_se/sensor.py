@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import logging
-import re
-from typing import Any, Dict, Optional
+import os
+import sys
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -11,94 +12,68 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import BokatDataUpdateCoordinator
-from .const import (
-    DOMAIN,
-    ATTR_ACTIVITY_NAME,
-    ATTR_ACTIVITY_URL,
-    ATTR_PARTICIPANTS,
-    ATTR_TOTAL_PARTICIPANTS,
-    ATTR_ATTENDING_COUNT,
-    ATTR_NOT_ATTENDING_COUNT,
-    ATTR_NO_RESPONSE_COUNT,
-    ATTR_ANSWER_URL,
-    DEFAULT_NAME,
-    ICON,
-)
+# Add the lib directory to the path
+lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "lib")
+if lib_path not in sys.path:
+    sys.path.insert(0, lib_path)
+
+from bokat_se import BokatAPI
+
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Bokat.se sensor based on a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
-    # Wait for first refresh so we have activity data
-    await coordinator.async_config_entry_first_refresh()
-    
-    async_add_entities([BokatSensor(coordinator, entry)])
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    api = hass.data[DOMAIN][entry.entry_id]["api"]
+
+    async_add_entities([BokatSensor(coordinator, api, entry)], True)
 
 
 class BokatSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Bokat.se sensor."""
 
-    def __init__(self, coordinator: BokatDataUpdateCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator, api, entry):
         """Initialize the sensor."""
         super().__init__(coordinator)
+        self._api = api
         self._entry = entry
-        self._attr_unique_id = f"{entry.entry_id}"
-        
-        # Use activity name for the entity name if available
-        activity_name = "Unknown"
-        if coordinator.data and coordinator.data.get("selected_activity"):
-            activity_name = coordinator.data["selected_activity"].get("name", "Unknown")
-        
-        # Convert activity name to a valid entity ID format
-        entity_name = re.sub(r'[^\w\s]', '', activity_name).lower().replace(' ', '_')
-        
-        self._attr_name = f"{DEFAULT_NAME} {entity_name}"
-        self._attr_icon = ICON
-        
-        # Store the entity_id format for service calls
-        coordinator.entity_id = f"sensor.bokat_se_{entity_name}"
-        
+        self._attr_name = f"Bokat {entry.data['username']}"
+        self._attr_unique_id = f"bokat_{entry.data['username']}"
+
     @property
-    def native_value(self) -> int:
-        """Return the state of the sensor as the attending count."""
-        if self.coordinator.data and self.coordinator.data.get("selected_activity"):
-            return self.coordinator.data["selected_activity"].get("attending_count", 0)
-        return 0
-    
+    def native_value(self) -> str:
+        """Return the state of the sensor."""
+        if not self.coordinator.data:
+            return "No data"
+        
+        activities = self.coordinator.data
+        return f"{len(activities)} activities"
+
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return the state attributes."""
-        attrs = {}
+        if not self.coordinator.data:
+            return {}
         
-        if self.coordinator.data and self.coordinator.data.get("selected_activity"):
-            activity = self.coordinator.data["selected_activity"]
-            attrs[ATTR_ACTIVITY_NAME] = activity.get("name", "Unknown")
-            attrs[ATTR_ACTIVITY_URL] = activity.get("url", "Unknown")
-            
-            # Add participant information if available
-            if "participants" in activity:
-                # Format participants as objects with properties
-                attrs[ATTR_PARTICIPANTS] = [
-                    {
-                        "name": participant.get("name", "Unknown"),
-                        "status": participant.get("status", "no_response"),
-                        "comment": participant.get("comment", ""),
-                        "timestamp": participant.get("timestamp", ""),
-                        "guests": participant.get("guests", 0)
-                    }
-                    for participant in activity.get("participants", [])
-                ]
-                
-                attrs[ATTR_TOTAL_PARTICIPANTS] = activity.get("total_participants", 0)
-                attrs[ATTR_ATTENDING_COUNT] = activity.get("attending_count", 0)
-                attrs[ATTR_NOT_ATTENDING_COUNT] = activity.get("not_attending_count", 0)
-                attrs[ATTR_NO_RESPONSE_COUNT] = activity.get("no_response_count", 0)
-                attrs[ATTR_ANSWER_URL] = activity.get("answer_url", "")
+        activities = self.coordinator.data
         
-        return attrs 
+        # Format activities for display
+        formatted_activities = []
+        for activity in activities:
+            formatted_activities.append({
+                "name": activity.get("name", "Unknown"),
+                "group": activity.get("group", "Unknown Group"),
+                "eventId": activity.get("eventId", ""),
+                "userId": activity.get("userId", ""),
+            })
+        
+        return {
+            "activities": formatted_activities,
+        } 
