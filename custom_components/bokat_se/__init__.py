@@ -20,12 +20,8 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-# Add the lib directory to the path
-lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "lib")
-if lib_path not in sys.path:
-    sys.path.insert(0, lib_path)
-
-from bokat_se import BokatAPI
+# Import from the new location
+from ..bokat_se_lib import BokatAPI
 
 from .const import DOMAIN, SCAN_INTERVAL
 

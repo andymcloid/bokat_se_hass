@@ -14,12 +14,8 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-# Add the lib directory to the path
-lib_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "lib")
-if lib_path not in sys.path:
-    sys.path.insert(0, lib_path)
-
-from bokat_se import BokatAPI
+# Import from the new location
+from ..bokat_se_lib import BokatAPI
 
 from .const import DOMAIN
 
