@@ -13,6 +13,7 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 - Respond to events with attendance status, guest count, and comments
 - Configurable update interval
 - Custom Lovelace card for easy interaction
+- Standalone BokatAPI module for programmatic access to Bokat.se
 
 ## Installation
 
@@ -30,7 +31,7 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 
 1. Download the latest release
 2. Copy the `custom_components/bokat_se` directory to your Home Assistant `custom_components` directory
-3. Copy the `www/bokat-se-card.js` file to your Home Assistant `www` directory
+3. Copy the `custom_components/bokat_se/www/bokat-se-card.js` file to your Home Assistant `www` directory
 4. Add the card as a resource in your Lovelace configuration:
    - Go to Configuration → Lovelace Dashboards → Resources
    - Add `/local/bokat-se-card.js` as a JavaScript module
@@ -236,3 +237,56 @@ For more details, see the [Development README](dev/README.md).
 ## License
 
 MIT
+
+## BokatAPI Module
+
+The integration includes a standalone BokatAPI module that can be used independently of Home Assistant. This module provides programmatic access to Bokat.se with the following features:
+
+- `list_activities(username, password)`: Returns an array of activities with name and URL
+- `get_activity(url)`: Returns an object with who signed up and an array with participants and their data scraped from that URL in real-time
+
+### Using the BokatAPI Module
+
+#### As a Python Module
+
+```python
+import asyncio
+from custom_components.bokat_se.bokatapi import list_activities, get_activity
+
+async def main():
+    # List all activities (requires login)
+    activities = await list_activities("your_username", "your_password")
+    print(f"Found {len(activities)} activities")
+    
+    if activities:
+        # Get details for the first activity (no login required)
+        activity_url = activities[0]["url"]
+        activity_details = await get_activity(activity_url)
+        print(f"Activity: {activity_details['name']}")
+        print(f"Total participants: {activity_details['total_participants']}")
+
+# Run the example
+asyncio.run(main())
+```
+
+#### From Command Line
+
+The module can also be run directly from the command line using the scripts in the `dev` folder:
+
+```bash
+# List all activities
+python dev/bokatapi_cli.py list "your_username" "your_password"
+
+# Get details for a specific activity
+python dev/bokatapi_cli.py get "https://www.bokat.se/stat.jsp?eventId=12345&userId=67890"
+```
+
+### Development Tools
+
+The `dev` folder contains scripts for testing and debugging:
+
+- `bokatapi_cli.py`: Command-line interface for the BokatAPI module
+- `example.py`: Example script demonstrating how to use the BokatAPI module
+- `dev_deploy_simple.ps1`: PowerShell script for deploying the integration to Home Assistant
+
+For more details, see the [BokatAPI README](custom_components/bokat_se/README_BOKATAPI.md) and the [Development README](dev/README.md).

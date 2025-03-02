@@ -8,7 +8,7 @@
     Copyright (c) 2025
 */
 
-import './bokat-se-card.js';
+import './custom_components/bokat_se/www/bokat-se-card.js';
 
 var version = "1.0.0";
 console.groupCollapsed(`%cBOKAT-SE-CARD ${version} IS INSTALLED`, "color: green; font-weight: bold"),

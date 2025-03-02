@@ -50,9 +50,8 @@ class BokatSeCard extends HTMLElement {
             return;
         }
 
-        const activities = state.attributes.activities || [];
-        const activityName = state.attributes.activity_name || state.state;
-        const activityStatus = state.attributes.activity_status || 'Unknown';
+        // Get data from the sensor entity attributes
+        const activityName = state.attributes.activity_name || 'Unknown Activity';
         const activityUrl = state.attributes.activity_url || '';
         
         // Participant information
@@ -63,12 +62,15 @@ class BokatSeCard extends HTMLElement {
         const noResponseCount = state.attributes.no_response_count || 0;
         const answerUrl = state.attributes.answer_url || '';
 
+        // The state is now the attending count
+        const stateValue = state.state;
+
         this.innerHTML = `
             <ha-card header="${this._config.title || 'Bokat.se'}">
                 <div class="card-content">
                     <div class="current-activity">
                         <h2>${activityName}</h2>
-                        <p>${activityStatus}</p>
+                        <p>Attending: ${stateValue}</p>
                         <a href="${activityUrl}" target="_blank" class="open-link">Open in Bokat.se</a>
                     </div>
                     
@@ -102,6 +104,7 @@ class BokatSeCard extends HTMLElement {
                                             <tr>
                                                 <th>Name</th>
                                                 <th>Status</th>
+                                                <th>Guests</th>
                                                 <th>Comment</th>
                                                 <th>Time</th>
                                             </tr>
@@ -111,6 +114,7 @@ class BokatSeCard extends HTMLElement {
                                                 <tr class="participant-row ${participant.status}">
                                                     <td>${participant.name}</td>
                                                     <td>${this._formatStatus(participant.status)}</td>
+                                                    <td>${participant.guests || 0}</td>
                                                     <td>${participant.comment || ''}</td>
                                                     <td>${participant.timestamp || ''}</td>
                                                 </tr>
@@ -144,38 +148,12 @@ class BokatSeCard extends HTMLElement {
                             ` : ''}
                         </div>
                     ` : ''}
-                    
-                    ${activities.length > 0 ? `
-                        <div class="activity-list">
-                            <h3>All Activities</h3>
-                            <ul>
-                                ${activities.map(activity => `
-                                    <li class="${activity.url === activityUrl ? 'selected' : ''}">
-                                        <div class="activity-info">
-                                            <span class="activity-name">${activity.name}</span>
-                                            <span class="activity-status">${activity.status || ''}</span>
-                                        </div>
-                                        <button class="select-button" data-url="${activity.url}">Select</button>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
                 </div>
                 <div class="card-actions">
                     <mwc-button @click="${this._handleRefresh}">Refresh</mwc-button>
                 </div>
             </ha-card>
         `;
-
-        // Add event listeners to the select buttons
-        const buttons = this.querySelectorAll('.select-button');
-        buttons.forEach(button => {
-            button.addEventListener('click', () => {
-                const url = button.getAttribute('data-url');
-                this._handleSelectActivity(url);
-            });
-        });
         
         // Add event listener to the submit response button
         const submitButton = this.querySelector('.submit-button');
@@ -281,10 +259,10 @@ class BokatSeCard extends HTMLElement {
                 border-bottom: 1px solid var(--divider-color, #e0e0e0);
                 color: var(--secondary-text-color);
             }
-            .participant-row.attending td:nth-child(2) {
+            .participant-row.yes td:nth-child(2) {
                 color: var(--success-color, green);
             }
-            .participant-row.not_attending td:nth-child(2) {
+            .participant-row.no td:nth-child(2) {
                 color: var(--error-color, red);
             }
             .participant-row.no_response td:nth-child(2) {
@@ -332,55 +310,6 @@ class BokatSeCard extends HTMLElement {
                 width: 100%;
                 margin-top: 8px;
             }
-            
-            /* Activity list styles */
-            .activity-list h3 {
-                margin: 0 0 16px 0;
-                font-size: 1em;
-                color: var(--primary-text-color);
-            }
-            .activity-list ul {
-                list-style: none;
-                padding: 0;
-                margin: 0;
-            }
-            .activity-list li {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 8px 0;
-                border-bottom: 1px solid var(--divider-color, #e0e0e0);
-            }
-            .activity-list li.selected {
-                background-color: var(--primary-color-light, rgba(var(--rgb-primary-color), 0.2));
-                border-radius: 4px;
-                padding: 8px;
-                margin: 0 -8px;
-            }
-            .activity-info {
-                flex: 1;
-                overflow: hidden;
-            }
-            .activity-name {
-                display: block;
-                font-weight: 500;
-                margin-bottom: 4px;
-                color: var(--primary-text-color);
-            }
-            .activity-status {
-                display: block;
-                font-size: 0.9em;
-                color: var(--secondary-text-color);
-            }
-            .select-button {
-                background-color: var(--primary-color);
-                color: var(--text-primary-color);
-                border: none;
-                border-radius: 4px;
-                padding: 4px 8px;
-                cursor: pointer;
-                font-size: 0.9em;
-            }
             .card-actions {
                 border-top: 1px solid var(--divider-color, #e0e0e0);
                 padding: 8px 16px;
@@ -390,61 +319,42 @@ class BokatSeCard extends HTMLElement {
 
     _formatStatus(status) {
         switch (status) {
-            case 'attending':
+            case 'yes':
                 return 'Attending';
-            case 'not_attending':
+            case 'no':
                 return 'Not Attending';
-            case 'no_response':
-                return 'No Response';
+            case 'comment_only':
+                return 'Comment Only';
             default:
-                return 'Unknown';
+                return 'No Response';
         }
     }
 
     _handleRefresh() {
-        if (!this._hass || !this._config) {
-            return;
+        if (this._hass) {
+            this._hass.callService('homeassistant', 'update_entity', {
+                entity_id: this._config.entity
+            });
         }
-
-        this._hass.callService('bokat_se', 'refresh', {
-            entity_id: this._config.entity
-        });
     }
 
-    _handleSelectActivity(url) {
-        if (!this._hass || !this._config) {
-            return;
-        }
-
-        this._hass.callService('bokat_se', 'select_activity', {
-            entity_id: this._config.entity,
-            activity_url: url
-        });
-    }
-    
     _handleSubmitResponse() {
-        if (!this._hass || !this._config) {
-            return;
-        }
-        
         const attendanceSelect = this.querySelector('.attendance-select');
         const guestsInput = this.querySelector('.guests-input');
         const commentInput = this.querySelector('.comment-input');
         
-        if (!attendanceSelect) {
-            return;
+        if (this._hass && attendanceSelect && commentInput) {
+            const attendance = attendanceSelect.value;
+            const guests = attendance === 'yes' && guestsInput ? parseInt(guestsInput.value, 10) : 0;
+            const comment = commentInput.value;
+            
+            this._hass.callService('bokat_se', 'submit_response', {
+                entity_id: this._config.entity,
+                attendance: attendance,
+                guests: guests,
+                comment: comment
+            });
         }
-        
-        const attendance = attendanceSelect.value;
-        const guests = guestsInput ? parseInt(guestsInput.value, 10) || 0 : 0;
-        const comment = commentInput ? commentInput.value : '';
-        
-        this._hass.callService('bokat_se', 'respond', {
-            entity_id: this._config.entity,
-            attendance: attendance,
-            guests: guests,
-            comment: comment
-        });
     }
 
     static getConfigElement() {
@@ -467,10 +377,8 @@ class BokatSeEditor extends HTMLElement {
     }
 
     setConfig(config) {
-        this._config = config || {
-            entity: '',
-            title: 'Bokat.se'
-        };
+        this._config = { ...config };
+        this.render();
     }
 
     set hass(hass) {
@@ -479,64 +387,55 @@ class BokatSeEditor extends HTMLElement {
     }
 
     render() {
-        if (!this._hass) {
-            return;
-        }
+        if (!this._hass) return;
 
-        // Get all sensor entities from Bokat.se integration
+        // Get all sensor entities
         const entities = Object.keys(this._hass.states)
-            .filter(entityId => entityId.startsWith('sensor.bokat_se_'))
-            .map(entityId => ({
-                value: entityId,
-                label: this._hass.states[entityId].attributes.friendly_name || entityId
-            }));
+            .filter(eid => eid.startsWith('sensor.bokat_se_'))
+            .sort();
 
         this.innerHTML = `
-            <div class="editor">
-                <ha-form
-                    .hass=${this._hass}
-                    .data=${this._config}
-                    .schema=${[
-                        {
-                            name: 'entity',
-                            selector: {
-                                entity: {
-                                    domain: 'sensor',
-                                    filter: entities.map(e => e.value)
-                                }
-                            }
-                        },
-                        {
-                            name: 'title',
-                            selector: {
-                                text: {}
-                            }
-                        }
-                    ]}
-                    .computeLabel=${(schema) => schema.name === 'entity' ? 'Entity' : 'Title'}
-                    @value-changed=${this._valueChanged}
-                ></ha-form>
+            <div class="card-config">
+                <div class="config-row">
+                    <label for="entity">Entity:</label>
+                    <select id="entity" class="entity-select">
+                        ${entities.map(entity => `
+                            <option value="${entity}" ${this._config.entity === entity ? 'selected' : ''}>
+                                ${entity}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="config-row">
+                    <label for="title">Card Title:</label>
+                    <input id="title" class="title-input" value="${this._config.title || 'Bokat.se'}">
+                </div>
             </div>
         `;
+
+        // Add event listeners
+        this.querySelector('.entity-select').addEventListener('change', this._valueChanged.bind(this));
+        this.querySelector('.title-input').addEventListener('input', this._valueChanged.bind(this));
     }
 
     _valueChanged(ev) {
-        if (!this._config || !this.dispatchEvent) {
-            return;
+        if (!this._config || !this._hass) return;
+
+        const target = ev.target;
+        
+        if (target.id === 'entity') {
+            this._config.entity = target.value;
+        } else if (target.id === 'title') {
+            this._config.title = target.value;
         }
 
-        const newConfig = {
-            ...this._config,
-            ...ev.detail.value
-        };
-
-        this.dispatchEvent(
-            new CustomEvent('config-changed', {
-                detail: { config: newConfig },
-                bubbles: true,
-                composed: true
-            })
-        );
+        // Dispatch the config-changed event
+        const event = new CustomEvent('config-changed', {
+            detail: { config: this._config },
+            bubbles: true,
+            composed: true,
+        });
+        this.dispatchEvent(event);
     }
 }
 

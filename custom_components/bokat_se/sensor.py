@@ -15,9 +15,7 @@ from . import BokatDataUpdateCoordinator
 from .const import (
     DOMAIN,
     ATTR_ACTIVITY_NAME,
-    ATTR_ACTIVITY_STATUS,
     ATTR_ACTIVITY_URL,
-    ATTR_ACTIVITIES,
     ATTR_PARTICIPANTS,
     ATTR_TOTAL_PARTICIPANTS,
     ATTR_ATTENDING_COUNT,
@@ -67,11 +65,11 @@ class BokatSensor(CoordinatorEntity, SensorEntity):
         coordinator.entity_id = f"sensor.bokat_se_{entity_name}"
         
     @property
-    def native_value(self) -> str:
-        """Return the state of the sensor."""
+    def native_value(self) -> int:
+        """Return the state of the sensor as the attending count."""
         if self.coordinator.data and self.coordinator.data.get("selected_activity"):
-            return self.coordinator.data["selected_activity"].get("name", "Unknown")
-        return "No activity"
+            return self.coordinator.data["selected_activity"].get("attending_count", 0)
+        return 0
     
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -81,27 +79,26 @@ class BokatSensor(CoordinatorEntity, SensorEntity):
         if self.coordinator.data and self.coordinator.data.get("selected_activity"):
             activity = self.coordinator.data["selected_activity"]
             attrs[ATTR_ACTIVITY_NAME] = activity.get("name", "Unknown")
-            attrs[ATTR_ACTIVITY_STATUS] = activity.get("status", "Unknown")
             attrs[ATTR_ACTIVITY_URL] = activity.get("url", "Unknown")
             
             # Add participant information if available
             if "participants" in activity:
-                attrs[ATTR_PARTICIPANTS] = activity.get("participants", [])
+                # Format participants as objects with properties
+                attrs[ATTR_PARTICIPANTS] = [
+                    {
+                        "name": participant.get("name", "Unknown"),
+                        "status": participant.get("status", "no_response"),
+                        "comment": participant.get("comment", ""),
+                        "timestamp": participant.get("timestamp", ""),
+                        "guests": participant.get("guests", 0)
+                    }
+                    for participant in activity.get("participants", [])
+                ]
+                
                 attrs[ATTR_TOTAL_PARTICIPANTS] = activity.get("total_participants", 0)
                 attrs[ATTR_ATTENDING_COUNT] = activity.get("attending_count", 0)
                 attrs[ATTR_NOT_ATTENDING_COUNT] = activity.get("not_attending_count", 0)
                 attrs[ATTR_NO_RESPONSE_COUNT] = activity.get("no_response_count", 0)
                 attrs[ATTR_ANSWER_URL] = activity.get("answer_url", "")
-        
-        # Add all activities as an attribute
-        if self.coordinator.data and self.coordinator.data.get("activities"):
-            attrs[ATTR_ACTIVITIES] = [
-                {
-                    "name": activity.get("name", "Unknown"),
-                    "status": activity.get("status", "Unknown"),
-                    "url": activity.get("url", "Unknown"),
-                }
-                for activity in self.coordinator.data["activities"]
-            ]
         
         return attrs 
