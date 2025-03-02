@@ -181,41 +181,30 @@ class BokatAPI:
         activity_names = []
         activity_groups = {}
         
+        # Track the current group name as we scan through rows
+        current_group = None
+        
+        # Scan through all rows in order
         for row in soup.find_all('tr'):
-            # Look for activity name
-            for td in row.find_all('td'):
-                b_tag = td.find('b')
-                if not b_tag or "Aktivitet:" not in b_tag.text:
-                    continue
-                    
-                next_td = td.find_next_sibling('td')
-                if not next_td:
-                    continue
-                    
-                # Get the activity name
-                activity_name = next_td.text.strip()
-                if not activity_name:
-                    continue
-                
-                # Add to our list of activities in order
-                if activity_name not in activity_names:
-                    activity_names.append(activity_name)
+            # Check for group name
+            group_td = row.find('td', text=lambda t: t and 'Grupp:' in t)
+            if group_td:
+                next_td = group_td.find_next_sibling('td')
+                if next_td:
+                    current_group = next_td.text.strip()
+                    _LOGGER.debug("Found group: %s", current_group)
             
-            # Look for group name
-            for td in row.find_all('td'):
-                b_tag = td.find('b')
-                if not b_tag or "Grupp:" not in b_tag.text:
-                    continue
-                    
-                next_td = td.find_next_sibling('td')
-                if not next_td:
-                    continue
-                    
-                group_name = next_td.text.strip()
-                
-                # Associate with the most recently found activity
-                if activity_names and activity_names[-1] not in activity_groups:
-                    activity_groups[activity_names[-1]] = group_name
+            # Check for activity name
+            activity_td = row.find('td', text=lambda t: t and 'Aktivitet:' in t)
+            if activity_td:
+                next_td = activity_td.find_next_sibling('td')
+                if next_td:
+                    activity_name = next_td.text.strip()
+                    if activity_name and activity_name not in activity_names:
+                        activity_names.append(activity_name)
+                        if current_group:
+                            activity_groups[activity_name] = current_group
+                        _LOGGER.debug("Found activity: %s (Group: %s)", activity_name, current_group or "Unknown")
         
         # Second pass: find all stat.jsp links in order
         stat_links = []
@@ -249,6 +238,8 @@ class BokatAPI:
         
         # Log what we found
         _LOGGER.info("Found %d activity names: %s", len(activity_names), ", ".join(activity_names))
+        for name in activity_names:
+            _LOGGER.info("Activity '%s' has group '%s'", name, activity_groups.get(name, "Unknown Group"))
         _LOGGER.info("Found %d stat.jsp links", len(stat_links))
         
         # Match activities with links in order
@@ -445,7 +436,7 @@ async def list_activities(username: str, password: str) -> List[Dict[str, str]]:
     async with BokatAPI() as api:
         return await api.list_activities(username, password)
     
-async def get_activity_info(event_id: str) -> List[Dict[str, Any]]:
+async def get_activity_info(event_id: str) -> Dict[str, Any]:
     """Get detailed information about an activity.
     
     Args:
@@ -455,45 +446,4 @@ async def get_activity_info(event_id: str) -> List[Dict[str, Any]]:
         Dict[str, Any]: Activity information including participants
     """
     async with BokatAPI() as api:
-        return await api.get_activity_info(event_id)
-
-
-
-# Command line interface
-async def main():
-    """Run the command line interface."""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="BokatAPI command line interface")
-    subparsers = parser.add_subparsers(dest="command", help="Command to run")
-    
-    # List activities command
-    list_parser = subparsers.add_parser("list", help="List activities")
-    list_parser.add_argument("username", help="Username for Bokat.se")
-    list_parser.add_argument("password", help="Password for Bokat.se")
-    
-    # Get activity command
-    get_parser = subparsers.add_parser("get", help="Get activity details")
-    get_parser.add_argument("url", help="URL of the activity")
-    
-    args = parser.parse_args()
-    
-    if args.command == "list":
-        activities = await list_activities(args.username, args.password)
-        print(json.dumps(activities, indent=2, ensure_ascii=False))
-    elif args.command == "get":
-        activity = await get_activity(args.url)
-        print(json.dumps(activity, indent=2, ensure_ascii=False))
-    else:
-        parser.print_help()
-
-
-if __name__ == "__main__":
-    # Set up logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-    
-    # Run the main function
-    asyncio.run(main()) 
+        return await api.get_activity_info(event_id) 
