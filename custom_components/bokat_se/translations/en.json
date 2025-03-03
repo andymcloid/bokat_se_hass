@@ -1,104 +1,46 @@
 {
-  "title": "Bokat.se",
-  "config": {
-    "step": {
-      "user": {
-        "title": "Connect to Bokat.se",
-        "description": "Set up Bokat.se integration",
-        "data": {
-          "username": "Username",
-          "password": "Password"
-        }
-      },
-      "activity": {
-        "title": "Select Activity",
-        "description": "Choose which activity to track",
-        "data": {
-          "activity_url": "Activity",
-          "scan_interval": "Scan interval (minutes, between 5-180)"
-        }
-      }
-    },
-    "error": {
-      "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error"
-    },
-    "abort": {
-      "already_configured": "Account is already configured"
-    },
-    "create_entry": {
-      "default": "Success! Activity has been added."
-    }
-  },
-  "services": {
-    "refresh": {
-      "name": "Refresh",
-      "description": "Refreshes data from Bokat.se",
-      "fields": {
-        "entity_id": {
-          "name": "Entity",
-          "description": "The sensor to refresh. Leave empty to refresh all sensors."
-        }
-      }
-    },
-    "select_activity": {
-      "name": "Select Activity",
-      "description": "Select a different activity to track",
-      "fields": {
-        "entity_id": {
-          "name": "Entity",
-          "description": "The sensor to update"
-        },
-        "activity_url": {
-          "name": "Activity URL",
-          "description": "The URL of the activity to track"
-        }
-      }
-    },
-    "respond": {
-      "name": "Respond",
-      "description": "Respond to an event with attendance status",
-      "fields": {
-        "entity_id": {
-          "name": "Entity",
-          "description": "The sensor to respond to"
-        },
-        "attendance": {
-          "name": "Attendance",
-          "description": "Your attendance status (yes, no, or comment_only)"
-        },
-        "comment": {
-          "name": "Comment",
-          "description": "Optional comment to include with your response"
-        },
-        "guests": {
-          "name": "Guests",
-          "description": "Number of guests to bring (default: 0)"
-        }
-      }
-    }
-  },
-  "component": {
-    "bokat_se": {
-      "status": {
-        "attending": "Attending",
-        "not_attending": "Not Attending",
-        "no_reply": "No Reply"
-      },
-      "action": {
-        "attending": "Attending",
-        "not_attending": "Not Attending"
-      },
-      "field": {
-        "comment": "Comment",
-        "guests": "Guests"
-      },
-      "editor": {
-        "show_badges": "Show status badges",
-        "show_summary": "Show participant list",
-        "enable_response": "Enable response form"
-      }
-    }
-  }
+    "title": "Bokat.se",
+    "user_title": "Connect to Bokat.se",
+    "user_description": "Set up Bokat.se integration",
+    "user_username": "Username",
+    "user_password": "Password",
+    "activity_title": "Select Activity",
+    "activity_description": "Choose which activity to track",
+    "activity_url": "Activity",
+    "activity_scan_interval": "Scan interval (minutes, between 5-180)",
+    "error_cannot_connect": "Failed to connect",
+    "error_invalid_auth": "Invalid authentication",
+    "error_unknown": "Unexpected error",
+    "abort_already_configured": "Account is already configured",
+    "create_entry_default": "Success! Activity has been added.",
+    "refresh_name": "Refresh",
+    "refresh_description": "Refreshes data from Bokat.se",
+    "refresh_entity_name": "Entity",
+    "refresh_entity_description": "The sensor to refresh. Leave empty to refresh all sensors.",
+    "select_activity_name": "Select Activity",
+    "select_activity_description": "Select a different activity to track",
+    "select_activity_entity_name": "Entity",
+    "select_activity_entity_description": "The sensor to update",
+    "select_activity_url_name": "Activity URL",
+    "select_activity_url_description": "The URL of the activity to track",
+    "respond_name": "Respond",
+    "respond_description": "Respond to an event with attendance status",
+    "respond_entity_name": "Entity",
+    "respond_entity_description": "The sensor to respond to",
+    "respond_attendance_name": "Attendance",
+    "respond_attendance_description": "Your attendance status (yes, no, or comment_only)",
+    "respond_comment_name": "Comment",
+    "respond_comment_description": "Optional comment to include with your response",
+    "respond_guests_name": "Guests",
+    "respond_guests_description": "Number of guests to bring (default: 0)",
+    "status_attending": "Attending",
+    "status_not_attending": "Not Attending",
+    "status_no_reply": "No Reply",
+    "action_attending": "Attending",
+    "action_not_attending": "Not Attending",
+    "field_comment": "Comment",
+    "field_guests": "Guests",
+    "editor_show_badges": "Show status badges",
+    "editor_show_summary": "Show participant list",
+    "editor_enable_response": "Enable response form"
 } 
