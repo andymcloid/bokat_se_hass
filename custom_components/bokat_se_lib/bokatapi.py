@@ -21,6 +21,9 @@ class BokatAPI:
     """API client for Bokat.se."""
     base_url = "https://www.bokat.se/"
     
+
+    """Private Functions"""
+
     def __init__(self, session: Optional[aiohttp.ClientSession] = None) -> None:
         """Initialize the API client.
         
@@ -44,6 +47,7 @@ class BokatAPI:
             self._session = None
     
     async def _login(self, username: str, password: str) -> BeautifulSoup:
+
         """Log in to Bokat.se.
         
         Args:
@@ -141,31 +145,7 @@ class BokatAPI:
         except Exception as e:
             _LOGGER.error("Error during login: %s", e)
             return None
-                
-    async def list_activities(self, username: str, password: str) -> List[Dict[str, str]]:
-        """List all activities for the user.
-        
-        Args:
-            username: The username for Bokat.se
-            password: The password for Bokat.se
-            
-        Returns:
-            List[Dict[str, str]]: A list of activities with name and URL
-        """
-        if not self._session:
-            self._session = aiohttp.ClientSession()
-            self._own_session = True
-
-        # Always login to fetch the activity list
-        soup = await self._login(username, password)
-
-        if not soup:
-            _LOGGER.error("Failed to authenticate with Bokat.se")
-            return []
-        
-        activities = self._parse_activities(soup)
-        return activities
-
+  
     def _parse_activities(self, soup: BeautifulSoup) -> List[Dict[str, str]]:
         """Parse activities from HTML using BeautifulSoup.
         
@@ -264,38 +244,7 @@ class BokatAPI:
             _LOGGER.info("Found %d activities: %s", len(activities), ", ".join(activity_names_list))
             
         return activities
-    
-    async def get_activity_info(self, event_id: str) -> Dict[str, Any]:
-        """Get detailed information about an activity.
-        
-        Args:
-            event_id: The ID of the event to get information for
-            
-        Returns:
-            Dict[str, Any]: Activity information including participants
-        """
-        url = f"{self.base_url}statPrint.jsp?eventId={event_id}"
-        
-        _LOGGER.info("Fetching activity info for event ID %s", event_id)
-        
-        async with self._session.get(url, cookies=self._cookies) as response:
-            if response.status != 200:
-                _LOGGER.error("Failed to get activity info: %s", response.status)
-                return {
-                    "error": f"Failed to get activity info: {response.status}",
-                    "attendees": 0,
-                    "no_reply": 0,
-                    "rejects": 0,
-                    "participants": []
-                }
-            
-            html = await response.text()
-            
-            # Parse the HTML directly
-            result = self._parse_activity_info(html)
-            
-            return result
-    
+
     def _parse_activity_info(self, html: str) -> Dict[str, Any]:
         """Parse activity information directly from HTML string.
         
@@ -407,28 +356,131 @@ class BokatAPI:
         
         return result
 
-# Convenience functions
-async def list_activities(username: str, password: str) -> List[Dict[str, str]]:
-    """List all activities for the user.
-    
-    Args:
-        username: The username for Bokat.se
-        password: The password for Bokat.se
+    """Public Functions"""
+
+    async def list_activities(self, username: str, password: str) -> List[Dict[str, str]]:
+        """List all activities for the user.
         
-    Returns:
-        List[Dict[str, str]]: A list of activities with name and URL
-    """
-    async with BokatAPI() as api:
-        return await api.list_activities(username, password)
-    
-async def get_activity_info(event_id: str) -> Dict[str, Any]:
-    """Get detailed information about an activity.
-    
-    Args:
-        event_id: The ID of the event to get information for
+        Args:
+            username: The username for Bokat.se
+            password: The password for Bokat.se
+            
+        Returns:
+            List[Dict[str, str]]: A list of activities with name and URL
+        """
+        if not self._session:
+            self._session = aiohttp.ClientSession()
+            self._own_session = True
+
+        # Always login to fetch the activity list
+        soup = await self._login(username, password)
+
+        if not soup:
+            _LOGGER.error("Failed to authenticate with Bokat.se")
+            return []
         
-    Returns:
-        Dict[str, Any]: Activity information including participants
-    """
-    async with BokatAPI() as api:
-        return await api.get_activity_info(event_id) 
+        activities = self._parse_activities(soup)
+        return activities
+
+    async def get_activity_info(self, event_id: str) -> Dict[str, Any]:
+        """Get detailed information about an activity.
+        
+        Args:
+            event_id: The ID of the event to get information for
+            
+        Returns:
+            Dict[str, Any]: Activity information including participants
+        """
+        url = f"{self.base_url}statPrint.jsp?eventId={event_id}"
+        
+        _LOGGER.info("Fetching activity info for event ID %s", event_id)
+        
+        async with self._session.get(url, cookies=self._cookies) as response:
+            if response.status != 200:
+                _LOGGER.error("Failed to get activity info: %s", response.status)
+                return {
+                    "error": f"Failed to get activity info: {response.status}",
+                    "attendees": 0,
+                    "no_reply": 0,
+                    "rejects": 0,
+                    "participants": []
+                }
+            
+            html = await response.text()
+            
+            # Parse the HTML directly
+            result = self._parse_activity_info(html)
+            
+            return result
+    
+    async def reply_to_activity(self, event_id: str, user_id: str, reply_type: str, comment: str = "", guests: int = 0) -> bool:
+        """Reply to an activity.
+        
+        Args:
+            event_id: The ID of the event to reply to
+            user_id: The ID of the user replying
+            reply_type: Type of reply ('yes', 'no', or 'comment_only')
+            comment: Optional comment to include with the reply
+            guests: Number of guests to bring (default: 0)
+            
+        Returns:
+            bool: True if reply was successful, False otherwise
+        """
+        url = f"{self.base_url}statAnswer.jsp?userId={user_id}&eventId={event_id}"
+        
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Origin": "https://bokat.se"
+        }
+
+        # Base data with optional comment
+        data = {}
+        if comment:
+            data["comment"] = comment
+
+        # Add specific fields based on reply type
+        if reply_type == 'yes':
+            data.update({
+                "accept": "Tacka Ja",
+                "currentStatus": "null"
+            })
+            if guests > 0:
+                data["nrOfGuests"] = str(guests)
+        elif reply_type == 'no':
+            data.update({
+                "decline": "Tacka Nej",
+                "currentStatus": "null",
+                "nrOfGuests": "0"
+            })
+        elif reply_type == 'comment_only':
+            data["onlyComment"] = "Endast kommentar"
+        else:
+            _LOGGER.error("Invalid reply type: %s", reply_type)
+            return False
+
+        try:
+            _LOGGER.debug("Posting Payload: %s", data)
+            async with self._session.post(
+                url=url,
+                headers=headers,
+                data=data,
+                cookies=self._cookies,
+                allow_redirects=True
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.error("Failed to submit reply: %s", response.status)
+                    return False
+                    
+                # Check response content for success indicators
+                html = await response.text()
+
+                if '<b>Sparat.</b>' in html :
+                    _LOGGER.info("Successfully replied to activity %s", event_id)
+                    return True
+                else:
+                    _LOGGER.error("Reply submission failed for activity %s", event_id)
+                    return False
+                    
+        except Exception as e:
+            _LOGGER.error("Error submitting reply: %s", e)
+            return False

@@ -9,17 +9,7 @@
 */
 
 // This version should match the VERSION in const.py
-const CARD_VERSION = "2.0.0";
-
-/*
- * CHANGELOG:
- * v2.0.0
- * - Added visual editor for card configuration
- * - Improved card styling and layout
- * - Added better participant status display
- * - Added filtering for Bokat.se sensors in the editor
- * - Fixed compatibility issues with Home Assistant
- */
+const CARD_VERSION = "1.0.0";
 
 class BokatSeCard extends HTMLElement {
     constructor() {
