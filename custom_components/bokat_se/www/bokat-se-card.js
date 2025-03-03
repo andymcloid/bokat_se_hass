@@ -728,23 +728,42 @@ import { LitElement, html, css } from 'https://unpkg.com/lit@2.7.6/index.js?modu
 class BokatSeEditor extends LitElement {
     static get properties() {
         return {
-            hass: { type: Object },
-            config: { type: Object },
-            _translations: { type: Object }
+            hass: {},
+            config: {}
         };
     }
 
     constructor() {
         super();
-        this.config = { 
-            entity: '',
-            title: '',
-            show_badges: true,
-            show_summary: true,
-            enable_response: false
-        };
+        this.config = {};
         this._translations = null;
         this._computeLabel = this._computeLabel.bind(this);
+    }
+
+    static get styles() {
+        return css`
+            ha-form {
+                width: 100%;
+            }
+            
+            /* Direct override for ha-formfield */
+            ha-formfield {
+                min-height: 0 !important;
+                padding: 4px 0 !important;
+                display: block !important;
+            }
+            
+            /* Target all form elements */
+            ::slotted(ha-formfield) {
+                min-height: 0 !important;
+                padding: 4px 0 !important;
+            }
+            
+            /* Force all checkboxes to be compact */
+            ha-checkbox {
+                --mdc-checkbox-state-layer-size: 24px !important;
+            }
+        `;
     }
 
     _computeLabel(schema) {
@@ -837,33 +856,6 @@ class BokatSeEditor extends LitElement {
         }
 
         return html`
-            <style>
-                ha-formfield {
-                    --mdc-typography-body2-font-size: 14px;
-                }
-                ha-form {
-                    --ha-form-element-spacing: 8px;
-                }
-                ::slotted(ha-formfield) {
-                    min-height: unset !important;
-                    padding: 4px 0 !important;
-                }
-                ha-selector-boolean {
-                    min-height: unset !important;
-                    padding: 4px 0 !important;
-                }
-                /* Target the deeper shadow DOM elements */
-                :host ::slotted(*) ha-formfield {
-                    min-height: unset !important;
-                    padding: 4px 0 !important;
-                }
-                /* Force all form fields to have minimal height */
-                :host {
-                    --mdc-checkbox-touch-target-size: 24px !important;
-                    --mdc-checkbox-ripple-size: 24px !important;
-                    --mdc-icon-button-size: 24px !important;
-                }
-            </style>
             <div class="editor">
                 <ha-form
                     .hass=${this.hass}
