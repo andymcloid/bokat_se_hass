@@ -53,6 +53,55 @@ class BokatSeCard extends HTMLElement {
         return participants.filter(p => p.status === status);
     }
 
+    // Get status icon and color
+    _getStatusIcon(status, hasComment) {
+        if (hasComment && status === 'NoReply') {
+            return {
+                icon: 'mdi:comment-outline',
+                color: 'var(--info-color, #039be5)'
+            };
+        }
+        
+        switch(status) {
+            case 'Attending':
+                return {
+                    icon: 'mdi:check-bold',
+                    color: 'var(--success-color, #4caf50)'
+                };
+            case 'NotAttending':
+                return {
+                    icon: 'mdi:close-thick',
+                    color: 'var(--error-color, #f44336)'
+                };
+            case 'NoReply':
+                return {
+                    icon: 'mdi:help',
+                    color: 'var(--disabled-text-color, #9e9e9e)'
+                };
+            default:
+                return {
+                    icon: 'mdi:help',
+                    color: 'var(--disabled-text-color, #9e9e9e)'
+                };
+        }
+    }
+
+    // Render participant row
+    _renderParticipant(participant) {
+        const statusInfo = this._getStatusIcon(participant.status, !!participant.comment);
+        return `
+            <div class="participant-row">
+                <ha-icon
+                    icon="${statusInfo.icon}"
+                    style="color: ${statusInfo.color};"
+                ></ha-icon>
+                <span class="name">${participant.name}</span>
+                ${participant.guests ? `<span class="guests">+${participant.guests}</span>` : ''}
+                ${participant.comment ? `<div class="comment">${participant.comment}</div>` : ''}
+            </div>
+        `;
+    }
+
     render() {
         if (!this._hass || !this._config) {
             return;
@@ -72,24 +121,15 @@ class BokatSeCard extends HTMLElement {
             return;
         }
 
-        // Get data from the sensor entity attributes
         const activityName = state.attributes.activity_name || state.attributes.friendly_name || entityId;
-        
-        // Use title from config if available, otherwise use activity name
         const cardTitle = this._config.title || activityName;
-        
-        // Participant information
         const participants = state.attributes.participants || [];
-        
-        // Get the total attending count from the entity state
         const totalAttending = state.state || 0;
         
-        // Filter participants by status
         const attendingParticipants = this._filterParticipants(participants, 'Attending');
         const notAttendingParticipants = this._filterParticipants(participants, 'NotAttending');
         const noReplyParticipants = this._filterParticipants(participants, 'NoReply');
         
-        // Calculate counts from the filtered arrays
         const notAttendingCount = notAttendingParticipants.length;
         const noResponseCount = noReplyParticipants.length;
         const guestsCount = participants.reduce((sum, p) => sum + (p.guests || 0), 0);
@@ -98,44 +138,22 @@ class BokatSeCard extends HTMLElement {
             <ha-card>
                 <div class="card-header">
                     <div class="name">${cardTitle}</div>
+                    <div class="stats">
+                        <span class="stat">
+                            <ha-icon icon="mdi:account-group" style="color: var(--primary-color);"></ha-icon>
+                            ${totalAttending}
+                        </span>
+                        <span class="stat">
+                            <ha-icon icon="mdi:account-multiple-plus" style="color: var(--info-color);"></ha-icon>
+                            ${guestsCount}
+                        </span>
+                    </div>
                 </div>
                 <div class="card-content">
-                    <div class="summary">
-                        <h3>Totalt antal spelare ${totalAttending}</h3>
-                        <p>
-                            <em>Kommer inte:</em> ${notAttendingCount}<br>
-                            <em>Inget svar:</em> ${noResponseCount}<br>
-                            <em>Gäster:</em> ${guestsCount}
-                        </p>
-                    </div>
-                    
                     <div class="participants-section">
-                        <h4>Spelare:</h4>
-                        <ul class="participants-list">
-                            ${attendingParticipants.map(p => `
-                                <li>
-                                    <em>${p.name}${p.guests ? ` +${p.guests}` : ''}${p.comment ? ` (${p.comment})` : ''}</em>
-                                </li>
-                            `).join('')}
-                        </ul>
-                        
-                        <h4>Tackat nej:</h4>
-                        <ul class="participants-list">
-                            ${notAttendingParticipants.map(p => `
-                                <li>
-                                    <em>${p.name}${p.guests ? ` +${p.guests}` : ''}${p.comment ? ` (${p.comment})` : ''}</em>
-                                </li>
-                            `).join('')}
-                        </ul>
-                        
-                        <h4>Ej svarat:</h4>
-                        <ul class="participants-list">
-                            ${noReplyParticipants.map(p => `
-                                <li>
-                                    <em>${p.name}${p.guests ? ` +${p.guests}` : ''}${p.comment ? ` (${p.comment})` : ''}</em>
-                                </li>
-                            `).join('')}
-                        </ul>
+                        ${[...attendingParticipants, ...notAttendingParticipants, ...noReplyParticipants]
+                            .map(p => this._renderParticipant(p))
+                            .join('')}
                     </div>
                 </div>
             </ha-card>
@@ -148,11 +166,15 @@ class BokatSeCard extends HTMLElement {
                 --secondary-color: var(--secondary-color, #607d8b);
                 --text-primary-color: var(--primary-text-color, #212121);
                 --text-secondary-color: var(--secondary-text-color, #727272);
+                --text-hint-color: var(--text-hint-color, #909090);
                 --divider-color: var(--divider-color, #e0e0e0);
                 --background-color: var(--card-background-color, white);
                 --success-color: var(--success-color, #4caf50);
                 --error-color: var(--error-color, #f44336);
                 --warning-color: var(--warning-color, #ff9800);
+                --info-color: var(--info-color, #039be5);
+                --disabled-text-color: var(--disabled-text-color, #9e9e9e);
+                --light-primary-color: var(--light-primary-color, #e1f5fe);
             }
             
             ha-card {
@@ -161,51 +183,88 @@ class BokatSeCard extends HTMLElement {
             }
             
             .card-header {
-                padding: 16px 16px 0;
+                padding: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid var(--divider-color);
             }
             
             .card-header .name {
-                font-size: 1.4em;
+                font-size: 1.2em;
                 font-weight: 500;
+                color: var(--text-primary-color);
+            }
+
+            .card-header .stats {
+                display: flex;
+                gap: 16px;
+            }
+
+            .card-header .stat {
+                display: flex;
+                align-items: center;
+                gap: 4px;
                 color: var(--text-primary-color);
             }
             
             .card-content {
-                padding: 16px;
-            }
-            
-            .summary h3 {
-                margin: 0 0 8px 0;
-                font-size: 1.1em;
-                font-weight: 500;
-            }
-            
-            .summary p {
-                margin: 0 0 16px 0;
-                line-height: 1.5;
-            }
-            
-            .participants-section h4 {
-                margin: 16px 0 8px 0;
-                font-size: 1em;
-                font-weight: 500;
-                border-bottom: 1px solid var(--divider-color);
-                padding-bottom: 4px;
-            }
-            
-            .participants-list {
-                list-style-type: none;
                 padding: 0;
-                margin: 0;
             }
             
-            .participants-list li {
-                padding: 4px 0;
+            .participants-section {
+                display: flex;
+                flex-direction: column;
             }
             
-            em {
-                font-style: italic;
+            .participant-row {
+                display: grid;
+                grid-template-columns: 20px 1fr auto;
+                grid-template-rows: auto auto;
+                padding: 8px 16px;
+                border-bottom: 1px solid var(--divider-color);
+                align-items: center;
+                gap: 0 8px;
+            }
+            
+            .participant-row:last-child {
+                border-bottom: none;
+            }
+            
+            .participant-row ha-icon {
+                grid-row: 1;
+                grid-column: 1;
+                --mdc-icon-size: 16px;
+            }
+            
+            .participant-row .name {
+                grid-row: 1;
+                grid-column: 2;
+                color: var(--text-primary-color);
                 font-weight: normal;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .participant-row .guests {
+                grid-row: 1;
+                grid-column: 3;
+                padding: 1px 4px;
+                background: var(--info-color);
+                color: white;
+                border-radius: 12px;
+                font-size: 0.8em;
+            }
+            
+            .participant-row .comment {
+                grid-row: 2;
+                grid-column: 2 / -1;
+                color: var(--disabled-text-color);
+                font-size: 0.85em;
+                line-height: 1.2;
+                opacity: 0.5;
+                padding-top: 2px;
             }
         `;
     }
