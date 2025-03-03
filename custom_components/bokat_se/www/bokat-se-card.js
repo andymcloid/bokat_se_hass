@@ -16,6 +16,7 @@ class BokatSeCard extends HTMLElement {
         super();
         this._config = {};
         this._hass = null;
+        this.attachShadow({ mode: 'open' });
     }
 
     setConfig(config) {
@@ -111,7 +112,7 @@ class BokatSeCard extends HTMLElement {
         const state = this._hass.states[entityId];
 
         if (!state) {
-            this.innerHTML = `
+            this.shadowRoot.innerHTML = `
                 <ha-card header="Bokat.se">
                     <div class="card-content">
                         Entity not found: ${entityId}
@@ -134,18 +135,170 @@ class BokatSeCard extends HTMLElement {
         const noResponseCount = noReplyParticipants.length;
         const guestsCount = participants.reduce((sum, p) => sum + (p.guests || 0), 0);
 
-        this.innerHTML = `
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    --primary-color: var(--primary-color, #03a9f4);
+                    --secondary-color: var(--secondary-color, #607d8b);
+                    --text-primary-color: var(--primary-text-color, #212121);
+                    --text-secondary-color: var(--secondary-text-color, #727272);
+                    --text-hint-color: var(--text-hint-color, #909090);
+                    --divider-color: var(--divider-color, #e0e0e0);
+                    --background-color: var(--card-background-color, white);
+                    --success-color: var(--success-color, #4caf50);
+                    --error-color: var(--error-color, #f44336);
+                    --warning-color: var(--warning-color, #ff9800);
+                    --info-color: var(--info-color, #039be5);
+                    --disabled-text-color: var(--disabled-text-color, #9e9e9e);
+                    --light-primary-color: var(--light-primary-color, #e1f5fe);
+                    --light-grey-color: var(--light-grey-color, #9e9e9e);
+                }
+                
+                ha-card {
+                    padding: 0;
+                    overflow: hidden;
+                }
+                
+                .card-header {
+                    padding: 16px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .card-header .name {
+                    font-size: 1.4em;
+                    font-weight: 500;
+                    color: var(--text-primary-color);
+                }
+
+                .card-header .stats {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .card-header .stat {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    color: var(--text-primary-color);
+                }
+                
+                .card-content {
+                    padding: 0 0 16px 0;
+                }
+                
+                .participants-section {
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                .participant-row {
+                    display: grid;
+                    grid-template-columns: 20px 1fr auto;
+                    grid-template-rows: auto auto;
+                    padding: 2px 16px;
+                    border-bottom: 1px solid var(--divider-color);
+                    align-items: center;
+                    gap: 0 8px;
+                }
+                
+                .participant-row:last-child {
+                    border-bottom: none;
+                }
+                
+                .participant-row ha-icon {
+                    grid-row: 1;
+                    grid-column: 1;
+                    --mdc-icon-size: 16px;
+                }
+                
+                .participant-row .name {
+                    grid-row: 1;
+                    grid-column: 2;
+                    color: var(--text-primary-color);
+                    font-weight: normal;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                
+                .participant-row .guests {
+                    grid-row: 1;
+                    grid-column: 3;
+                    padding: 1px 4px;
+                    background: var(--info-color);
+                    color: white;
+                    border-radius: 12px;
+                    font-size: 0.8em;
+                }
+                
+                .participant-row .comment {
+                    grid-row: 2;
+                    grid-column: 2 / -1;
+                    padding-top: 0;
+                    padding-left: 0;
+                    color: var(--mdc-theme-text-secondary-on-background, rgba(0, 0, 0, .54));
+                    font-size: var(--mdc-typography-body2-font-size, .875rem);
+                    font-style: italic;
+                }
+
+                .stat {
+                    position: relative;
+                    --ha-ripple-color: var(--badge-color);
+                    --ha-ripple-hover-opacity: 0.04;
+                    --ha-ripple-pressed-opacity: 0.12;
+                    transition: box-shadow 180ms ease-in-out, border-color 180ms ease-in-out;
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 4px;
+                    height: var(--ha-badge-size, 24px);
+                    min-width: var(--ha-badge-size, 24px);
+                    padding: 0 8px;
+                    box-sizing: border-box;
+                    width: auto;
+                    border-radius: var(--ha-badge-border-radius, calc(var(--ha-badge-size, 24px) / 2));
+                    background: var(--primary-background-color);
+                    border-width: var(--ha-card-border-width, 1px);
+                    border-style: solid;
+                    border-color: var(--light-grey-color, #9e9e9e);
+                    color: var(--primary-text-color);
+                    font-size: 1rem;
+                }
+
+                .stat ha-icon {
+                    --mdc-icon-size: 16px;
+                }
+
+                .stat.attending ha-icon {
+                    color: var(--success-color, #4caf50);
+                }
+
+                .stat.not-attending ha-icon {
+                    color: var(--error-color, #f44336);
+                }
+
+                .stat.noreply ha-icon {
+                    color: var(--light-grey-color, #9e9e9e);
+                }
+            </style>
             <ha-card>
                 <div class="card-header">
                     <div class="name">${cardTitle}</div>
                     <div class="stats">
-                        <span class="stat">
-                            <ha-icon icon="mdi:account-group" style="color: var(--primary-color);"></ha-icon>
+                        <span class="stat attending">
+                            <ha-icon icon="mdi:account-check"></ha-icon>
                             ${totalAttending}
                         </span>
-                        <span class="stat">
-                            <ha-icon icon="mdi:account-multiple-plus" style="color: var(--info-color);"></ha-icon>
-                            ${guestsCount}
+                        <span class="stat not-attending">
+                            <ha-icon icon="mdi:account-cancel"></ha-icon>
+                            ${notAttendingParticipants.length}
+                        </span>
+                        <span class="stat noreply">
+                            <ha-icon icon="mdi:account-question"></ha-icon>
+                            ${noReplyParticipants.length}
                         </span>
                     </div>
                 </div>
@@ -157,115 +310,6 @@ class BokatSeCard extends HTMLElement {
                     </div>
                 </div>
             </ha-card>
-        `;
-
-        // Add styles
-        this.style.cssText = `
-            :host {
-                --primary-color: var(--primary-color, #03a9f4);
-                --secondary-color: var(--secondary-color, #607d8b);
-                --text-primary-color: var(--primary-text-color, #212121);
-                --text-secondary-color: var(--secondary-text-color, #727272);
-                --text-hint-color: var(--text-hint-color, #909090);
-                --divider-color: var(--divider-color, #e0e0e0);
-                --background-color: var(--card-background-color, white);
-                --success-color: var(--success-color, #4caf50);
-                --error-color: var(--error-color, #f44336);
-                --warning-color: var(--warning-color, #ff9800);
-                --info-color: var(--info-color, #039be5);
-                --disabled-text-color: var(--disabled-text-color, #9e9e9e);
-                --light-primary-color: var(--light-primary-color, #e1f5fe);
-            }
-            
-            ha-card {
-                padding: 0;
-                overflow: hidden;
-            }
-            
-            .card-header {
-                padding: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid var(--divider-color);
-            }
-            
-            .card-header .name {
-                font-size: 1.2em;
-                font-weight: 500;
-                color: var(--text-primary-color);
-            }
-
-            .card-header .stats {
-                display: flex;
-                gap: 16px;
-            }
-
-            .card-header .stat {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                color: var(--text-primary-color);
-            }
-            
-            .card-content {
-                padding: 0;
-            }
-            
-            .participants-section {
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .participant-row {
-                display: grid;
-                grid-template-columns: 20px 1fr auto;
-                grid-template-rows: auto auto;
-                padding: 8px 16px;
-                border-bottom: 1px solid var(--divider-color);
-                align-items: center;
-                gap: 0 8px;
-            }
-            
-            .participant-row:last-child {
-                border-bottom: none;
-            }
-            
-            .participant-row ha-icon {
-                grid-row: 1;
-                grid-column: 1;
-                --mdc-icon-size: 16px;
-            }
-            
-            .participant-row .name {
-                grid-row: 1;
-                grid-column: 2;
-                color: var(--text-primary-color);
-                font-weight: normal;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-            
-            .participant-row .guests {
-                grid-row: 1;
-                grid-column: 3;
-                padding: 1px 4px;
-                background: var(--info-color);
-                color: white;
-                border-radius: 12px;
-                font-size: 0.8em;
-            }
-            
-            .participant-row .comment {
-                grid-row: 2;
-                grid-column: 2 / -1;
-                color: var(--disabled-text-color);
-                font-size: 0.85em;
-                line-height: 1.2;
-                opacity: 0.5;
-                padding-top: 2px;
-            }
         `;
     }
     
