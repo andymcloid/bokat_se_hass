@@ -1,11 +1,12 @@
 {
+  "title": "Bokat.se",
   "config": {
     "step": {
       "user": {
         "title": "Anslut till Bokat.se",
-        "description": "Ange dina inloggningsuppgifter för Bokat.se",
+        "description": "Konfigurera Bokat.se integration",
         "data": {
-          "username": "E-post",
+          "username": "Användarnamn",
           "password": "Lösenord"
         }
       },
@@ -19,12 +20,12 @@
       }
     },
     "error": {
-      "cannot_connect": "Kunde inte ansluta till Bokat.se",
-      "invalid_auth": "Ogiltigt användarnamn eller lösenord",
+      "cannot_connect": "Kunde inte ansluta",
+      "invalid_auth": "Ogiltig autentisering",
       "unknown": "Oväntat fel"
     },
     "abort": {
-      "already_configured": "Detta konto är redan konfigurerat"
+      "already_configured": "Kontot är redan konfigurerat"
     },
     "create_entry": {
       "default": "Lyckades! Aktiviteten har lagts till."
@@ -75,6 +76,28 @@
           "name": "Gäster",
           "description": "Antal gäster att ta med (standard: 0)"
         }
+      }
+    }
+  },
+  "component": {
+    "bokat_se": {
+      "status": {
+        "attending": "Kommer",
+        "not_attending": "Kommer inte",
+        "no_reply": "Inget svar"
+      },
+      "action": {
+        "attending": "Kommer",
+        "not_attending": "Kommer inte"
+      },
+      "field": {
+        "comment": "Kommentar",
+        "guests": "Gäster"
+      },
+      "editor": {
+        "show_badges": "Visa statusikoner",
+        "show_summary": "Visa deltagarlista",
+        "enable_response": "Aktivera svarsformulär"
       }
     }
   }

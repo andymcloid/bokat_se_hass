@@ -82,11 +82,11 @@ class BokatSeCard extends HTMLElement {
     _formatStatus(status) {
         switch(status) {
             case 'Attending':
-                return 'Attending';
+                return this._hass.localize('component.bokat_se.status.attending') || 'Attending';
             case 'NotAttending':
-                return 'Not Attending';
+                return this._hass.localize('component.bokat_se.status.not_attending') || 'Not Attending';
             case 'NoReply':
-                return 'No Reply';
+                return this._hass.localize('component.bokat_se.status.no_reply') || 'No Reply';
             default:
                 return status;
         }
@@ -466,7 +466,7 @@ class BokatSeCard extends HTMLElement {
                                 type="button"
                             >
                                 <ha-icon icon="mdi:account-check"></ha-icon>
-                                <span>Attending</span>
+                                <span>${this._hass.localize('component.bokat_se.action.attending') || 'Attending'}</span>
                                 ${this._loadingButton === 'attending-btn' ? '<div class="loading-spinner"></div>' : ''}
                             </button>
                             <button 
@@ -476,14 +476,14 @@ class BokatSeCard extends HTMLElement {
                                 type="button"
                             >
                                 <ha-icon icon="mdi:account-cancel"></ha-icon>
-                                <span>Not Attending</span>
+                                <span>${this._hass.localize('component.bokat_se.action.not_attending') || 'Not Attending'}</span>
                                 ${this._loadingButton === 'not-attending-btn' ? '<div class="loading-spinner"></div>' : ''}
                             </button>
                         </div>
                         <div class="inputs">
                             <ha-textfield 
                                 class="comment-field" 
-                                label="Comment" 
+                                label="${this._hass.localize('component.bokat_se.field.comment') || 'Comment'}" 
                                 id="comment"
                                 .value="${this._comment}"
                                 .disabled="${this._loading}"
@@ -492,7 +492,7 @@ class BokatSeCard extends HTMLElement {
                                 class="guests-field" 
                                 type="number" 
                                 min="0" 
-                                label="Guests" 
+                                label="${this._hass.localize('component.bokat_se.field.guests') || 'Guests'}" 
                                 id="guests"
                                 .value="${this._guests}"
                                 .disabled="${this._loading}"
@@ -728,17 +728,17 @@ class BokatSeEditor extends LitElement {
             },
             { 
                 name: 'show_badges', 
-                label: this.hass.localize('ui.panel.lovelace.editor.card.bokat-se.show_badges') || 'Show status badges',
+                label: this.hass.localize('component.bokat_se.editor.show_badges') || 'Show status badges',
                 selector: { boolean: {} }
             },
             { 
                 name: 'show_summary', 
-                label: this.hass.localize('ui.panel.lovelace.editor.card.bokat-se.show_summary') || 'Show participant list',
+                label: this.hass.localize('component.bokat_se.editor.show_summary') || 'Show participant list',
                 selector: { boolean: {} }
             },
             { 
                 name: 'enable_response', 
-                label: this.hass.localize('ui.panel.lovelace.editor.card.bokat-se.enable_response') || 'Enable response form',
+                label: this.hass.localize('component.bokat_se.editor.enable_response') || 'Enable response form',
                 selector: { boolean: {} }
             }
         ];
