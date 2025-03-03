@@ -209,135 +209,115 @@ class BokatSeCard extends HTMLElement {
             }
         `;
     }
+    
+    // This is needed to register the editor with the card
+    static getConfigElement() {
+        return document.createElement('bokat-se-editor');
+    }
+    
+    // This is needed to provide default config
+    static getStubConfig() {
+        return { entity: '' };
+    }
 }
 
-class BokatSeEditor extends HTMLElement {
+// Import LitElement for the editor
+import { LitElement, html, css } from 'https://unpkg.com/lit@2.7.6/index.js?module';
+
+class BokatSeEditor extends LitElement {
     static get properties() {
         return {
-            hass: {},
-            _config: {}
+            hass: { type: Object },
+            config: { type: Object }
         };
     }
 
     constructor() {
         super();
-        this._config = {};
-        this.attachShadow({ mode: 'open' });
+        this.config = { entity: '' };
     }
 
     setConfig(config) {
-        this._config = config || {};
-        this.render();
+        this.config = { ...config };
     }
 
-    set hass(hass) {
-        this._hass = hass;
-        this.render();
+    static get styles() {
+        return css`
+            .editor {
+                padding: 8px;
+            }
+        `;
+    }
+
+    get _schema() {
+        return [
+            { 
+                name: 'entity', 
+                label: this.hass.localize('ui.panel.lovelace.editor.card.generic.entity') || 'Entity', 
+                selector: { 
+                    entity: { 
+                        filter: 'sensor.bokat_se'
+                    } 
+                } 
+            },
+            { 
+                name: 'title', 
+                label: this.hass.localize('ui.panel.lovelace.editor.card.generic.title') || 'Title', 
+                selector: { text: {} } 
+            }
+        ];
     }
 
     render() {
-        if (!this._hass) {
-            return;
+        if (!this.hass) {
+            return html`<div>Loading...</div>`;
         }
 
-        const entities = Object.keys(this._hass.states)
-            .filter(entityId => entityId.startsWith('sensor.bokat_se'))
-            .sort();
-
-        if (!this.shadowRoot) return;
-
-        this.shadowRoot.innerHTML = `
-            <style>
-                ha-entity-picker {
-                    display: block;
-                    width: 100%;
-                    margin-bottom: 16px;
-                }
-                paper-input {
-                    display: block;
-                    width: 100%;
-                }
-                .option {
-                    margin-bottom: 16px;
-                }
-                .option label {
-                    display: block;
-                    margin-bottom: 4px;
-                    color: var(--primary-text-color);
-                }
-            </style>
-            <div class="card-config">
-                <div class="option">
-                    <label>Entity:</label>
-                    <ha-entity-picker
-                        .hass=${this._hass}
-                        .value="${this._config.entity || ''}"
-                        .configValue=${'entity'}
-                        .includeDomains=${['sensor']}
-                        .entityFilter=${entityId => entityId.startsWith('sensor.bokat_se')}
-                        @change=${this._valueChanged}
-                        allow-custom-entity
-                    ></ha-entity-picker>
-                </div>
-                <div class="option">
-                    <label>Title (optional):</label>
-                    <paper-input
-                        .value="${this._config.title || ''}"
-                        .configValue=${'title'}
-                        @value-changed=${this._valueChanged}
-                    ></paper-input>
-                </div>
+        return html`
+            <div class="editor">
+                <ha-form
+                    .hass=${this.hass}
+                    .data=${this.config}
+                    .schema=${this._schema}
+                    @value-changed=${this._valueChanged}
+                ></ha-form>
             </div>
         `;
     }
 
     _valueChanged(ev) {
-        if (!this._config) {
+        if (!this.config) {
             return;
         }
 
-        const target = ev.target;
-        const configValue = target.configValue;
+        const newConfig = { ...this.config, ...ev.detail.value };
         
-        if (!configValue) {
-            return;
-        }
-
-        if (target.type === 'checkbox') {
-            this._config = {
-                ...this._config,
-                [configValue]: target.checked,
-            };
-        } else {
-            const value = ev.detail && ev.detail.value !== undefined ? ev.detail.value : target.value;
-            this._config = {
-                ...this._config,
-                [configValue]: value,
-            };
-        }
-
         // Dispatch the config-changed event
         const event = new CustomEvent('config-changed', {
-            detail: { config: this._config },
+            detail: { config: newConfig },
             bubbles: true,
             composed: true,
         });
         this.dispatchEvent(event);
+        this.config = newConfig;
     }
 }
 
 customElements.define('bokat-se-card', BokatSeCard);
 customElements.define('bokat-se-editor', BokatSeEditor);
 
+// Register the card with Home Assistant
 window.customCards = window.customCards || [];
 window.customCards.push({
     type: 'bokat-se-card',
     name: 'Bokat.se Card',
-    description: 'A card to display and interact with Bokat.se activities'
+    description: 'A card to display and interact with Bokat.se activities',
+    preview: false,
+    configurable: true
 });
 
 console.info(
     '%c BOKAT-SE-CARD %c ' + CARD_VERSION + ' ',
     'color: white; background: #3498db; font-weight: 700;',
     'color: #3498db; background: white; font-weight: 700;'
-); 
+);
