@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.5 (2025-03-01)
+## 1.6.50 (2025-03-01)
 
 Initial release with fixes
 
@@ -11,3 +11,4 @@ Initial release with fixes
 - Custom card for displaying activities
 - Services for refreshing data and selecting activities 
 - Separated Bokat.se Lib into standalone library for parsing
+- Custom card
