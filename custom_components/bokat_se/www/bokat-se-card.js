@@ -250,13 +250,19 @@ class BokatSeEditor extends LitElement {
     }
 
     get _schema() {
+        // Get all sensor entities that start with 'sensor.bokat_se'
+        const entities = Object.keys(this.hass.states)
+            .filter(entityId => entityId.startsWith('sensor.bokat_se'))
+            .sort();
+
         return [
             { 
                 name: 'entity', 
                 label: this.hass.localize('ui.panel.lovelace.editor.card.generic.entity') || 'Entity', 
                 selector: { 
                     entity: { 
-                        filter: 'sensor.bokat_se'
+                        domain: 'sensor',
+                        integration: 'bokat_se'
                     } 
                 } 
             },
