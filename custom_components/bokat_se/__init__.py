@@ -15,7 +15,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     Platform,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
@@ -29,7 +29,12 @@ try:
 except ImportError:
     from ..bokat_se_lib import BokatAPI
 
-from .const import DOMAIN, SCAN_INTERVAL, VERSION
+from .const import (
+    DOMAIN, SCAN_INTERVAL, VERSION,
+    SERVICE_REFRESH, SERVICE_RESPOND,
+    ATTR_ENTITY_ID, ATTR_ATTENDANCE, ATTR_COMMENT, ATTR_GUESTS,
+    CONF_ACTIVITY_URL
+)
 from .frontend import async_register_frontend
 
 _LOGGER = logging.getLogger(__name__)
@@ -87,6 +92,59 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     # Register frontend resources
     await async_register_frontend(hass)
+
+    # Register services
+    async def handle_refresh(call: ServiceCall) -> None:
+        """Handle refresh service call."""
+        entity_id = call.data.get(ATTR_ENTITY_ID)
+        if entity_id:
+            coordinator = hass.data[DOMAIN][entity_id]["coordinator"]
+            await coordinator.async_refresh()
+        else:
+            # Refresh all entities
+            for entry_id in hass.data[DOMAIN]:
+                coordinator = hass.data[DOMAIN][entry_id]["coordinator"]
+                await coordinator.async_refresh()
+
+    async def handle_respond(call: ServiceCall) -> None:
+        """Handle respond service call."""
+        entity_id = call.data[ATTR_ENTITY_ID]
+        attendance = call.data[ATTR_ATTENDANCE]
+        comment = call.data.get(ATTR_COMMENT, "")
+        guests = call.data.get(ATTR_GUESTS, 0)
+
+        # Get the API instance and activity info
+        api = hass.data[DOMAIN][entity_id]["api"]
+        state = hass.states.get(entity_id)
+        if not state:
+            _LOGGER.error("Entity %s not found", entity_id)
+            return
+
+        event_id = state.attributes.get("eventId")
+        user_id = state.attributes.get("userId")
+        if not event_id or not user_id:
+            _LOGGER.error("Missing eventId or userId for %s", entity_id)
+            return
+
+        # Send the response
+        success = await api.reply_to_activity(
+            event_id=event_id,
+            user_id=user_id,
+            reply_type=attendance,
+            comment=comment,
+            guests=guests
+        )
+
+        if success:
+            # Trigger a refresh
+            coordinator = hass.data[DOMAIN][entity_id]["coordinator"]
+            await coordinator.async_refresh()
+        else:
+            _LOGGER.error("Failed to respond to activity")
+
+    hass.services.async_register(DOMAIN, SERVICE_REFRESH, handle_refresh)
+    hass.services.async_register(DOMAIN, SERVICE_RESPOND, handle_respond)
+
     return True
 
 

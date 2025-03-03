@@ -20,6 +20,7 @@ build/
 dev_config.json
 
 # Environment
+.cursor
 .env
 .venv
 env/

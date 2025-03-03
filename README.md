@@ -48,7 +48,7 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 
 ## Usage
 
-After configuration, a sensor will be created with the name based on your selected activity (e.g., `sensor.bokat_se_innebandy_sondag_kvall_tullinge`). This sensor will display the name of the selected activity and will have the following attributes:
+After configuration, a sensor will be created with the name based on your selected activity (e.g., `sensor.bokat_se_innebandy_sondag_kvall`). This sensor will display the name of the selected activity and will have the following attributes:
 
 - `activity_name`: The name of the selected activity
 - `activity_status`: The status of the selected activity (number of participants, etc.)
@@ -121,24 +121,19 @@ If the card doesn't appear in your dashboard or you get an error like "Custom el
 
 1. Make sure the card is properly loaded as a resource:
    - Go to Configuration → Lovelace Dashboards → Resources
-   - Check if `/local/bokat-se-card.js` is listed as a JavaScript module
+   - Check if `/bokat_se/bokat-se-card.js` is listed as a JavaScript module
    - If not, add it manually by clicking "Add Resource" and entering:
-     - URL: `/local/bokat-se-card.js`
+     - URL: `/bokat_se/bokat-se-card.js`
      - Resource type: JavaScript Module
 
-2. Verify the card file exists:
-   - Check if the file exists at `<config>/www/bokat-se-card.js`
-   - If not, try restarting Home Assistant to trigger the automatic copy process
-   - Or manually copy the file from `custom_components/bokat_se/www/bokat-se-card.js` to `<config>/www/bokat-se-card.js`
+2. Clear your browser cache and reload the page
 
-3. Clear your browser cache and reload the page
-
-4. If using HACS:
+3. If using HACS:
    - HACS does not automatically register the card as a resource
    - You must manually add the resource as described in step 1
    - This is a one-time setup step after installing the integration
 
-5. Check Home Assistant logs for any errors related to the card:
+4. Check Home Assistant logs for any errors related to the card:
    - Look for messages from the `bokat_se` component
    - The integration attempts to register the card automatically, but this may not work in all environments
 
@@ -151,12 +146,12 @@ automation:
   - alias: "Notify when activity status changes"
     trigger:
       - platform: state
-        entity_id: sensor.bokat_se_innebandy_sondag_kvall_tullinge
+        entity_id: sensor.bokat_se_innebandy_sondag_kvall
     action:
       - service: notify.mobile_app
         data:
           title: "Bokat.se Activity Update"
-          message: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall_tullinge', 'activity_status') }}"
+          message: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall', 'activity_status') }}"
 ```
 
 ### Notify when someone responds to an event
@@ -166,13 +161,13 @@ automation:
   - alias: "Notify when someone responds to an event"
     trigger:
       - platform: state
-        entity_id: sensor.bokat_se_innebandy_sondag_kvall_tullinge
+        entity_id: sensor.bokat_se_innebandy_sondag_kvall
         attribute: attending_count
     action:
       - service: notify.mobile_app
         data:
           title: "Bokat.se Attendance Update"
-          message: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall_tullinge', 'attending_count') }} people are now attending"
+          message: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall', 'attending_count') }} people are now attending"
 ```
 
 ### Respond to an event via automation
@@ -185,11 +180,11 @@ automation:
         at: "08:00:00"
     condition:
       - condition: template
-        value_template: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall_tullinge', 'answer_url') != '' }}"
+        value_template: "{{ state_attr('sensor.bokat_se_innebandy_sondag_kvall', 'answer_url') != '' }}"
     action:
       - service: bokat_se.respond
         data:
-          entity_id: sensor.bokat_se_innebandy_sondag_kvall_tullinge
+          entity_id: sensor.bokat_se_innebandy_sondag_kvall
           attendance: "yes"
           comment: "I'll be there!"
           guests: 0

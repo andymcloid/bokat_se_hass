@@ -11,27 +11,6 @@ refresh:
           integration: bokat_se
           domain: sensor
 
-select_activity:
-  name: Select Activity
-  description: Select a different activity to track.
-  fields:
-    entity_id:
-      name: Entity
-      description: The entity ID of the sensor.
-      required: true
-      example: sensor.bokat_se_innebandy_sondag_kvall_tullinge
-      selector:
-        entity:
-          integration: bokat_se
-          domain: sensor
-    activity_url:
-      name: Activity URL
-      description: The URL of the activity to select.
-      required: true
-      example: https://www.bokat.se/showActivity.jsp?activity=12345
-      selector:
-        text:
-
 respond:
   name: Respond
   description: Respond to an event with attendance status, comment, and guests.
@@ -47,7 +26,7 @@ respond:
           domain: sensor
     attendance:
       name: Attendance
-      description: The attendance status.
+      description: Your attendance status (yes, no, or comment_only).
       required: true
       example: "yes"
       selector:
@@ -58,13 +37,13 @@ respond:
             - "comment_only"
     comment:
       name: Comment
-      description: A comment to include with your response.
+      description: Optional comment to include with your response.
       example: "I'll be there!"
       selector:
         text:
     guests:
       name: Guests
-      description: Number of guests you're bringing (only applicable when attendance is "yes").
+      description: Number of guests to bring (only valid when attendance is "yes").
       default: 0
       example: 2
       selector:
