@@ -97,13 +97,24 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def handle_refresh(call: ServiceCall) -> None:
         """Handle refresh service call."""
         entity_id = call.data.get(ATTR_ENTITY_ID)
+        
         if entity_id:
-            coordinator = hass.data[DOMAIN][entity_id]["coordinator"]
-            await coordinator.async_refresh()
+            # Find the coordinator for this entity
+            entity_found = False
+            for entry_data in hass.data[DOMAIN].values():
+                coordinator = entry_data["coordinator"]
+                if entity_id in coordinator.data:
+                    entity_found = True
+                    await coordinator.async_refresh()
+                    break
+            
+            if not entity_found:
+                _LOGGER.error("Entity %s not found", entity_id)
+                return
         else:
-            # Refresh all entities
-            for entry_id in hass.data[DOMAIN]:
-                coordinator = hass.data[DOMAIN][entry_id]["coordinator"]
+            # Refresh all coordinators
+            for entry_data in hass.data[DOMAIN].values():
+                coordinator = entry_data["coordinator"]
                 await coordinator.async_refresh()
 
     async def handle_respond(call: ServiceCall) -> None:
