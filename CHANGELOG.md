@@ -6,14 +6,17 @@
 - Removed unnecessary debug logging throughout the codebase
 - Improved code efficiency by removing unused imports
 - Cleaner frontend code with removal of console.log statements
+- Updated HACS configuration for better compatibility
 
 ### Fixed
 - Fixed missing timedelta import causing setup errors
+- Fixed HACS validation issues by updating manifest.json and hacs.json
 
 ### Developer
 - Code cleanup and optimization
 - Removed unused imports while keeping essential dependencies
 - Followed project coding style guidelines for better maintainability
+- Added issue tracker URL to manifest.json
 
 ## 2.0.0 (2025-03-03)
 
