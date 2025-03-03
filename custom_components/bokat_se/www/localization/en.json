@@ -24,6 +24,7 @@
     "status_no_reply": "No Reply",
     "action_attending": "Attending",
     "action_not_attending": "Not Attending",
+    "action_only_comment": "Only Comment",
     "field_comment": "Comment",
     "field_guests": "Guests",
     "editor_show_badges": "Show status badges",

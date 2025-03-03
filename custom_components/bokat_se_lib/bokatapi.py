@@ -160,9 +160,11 @@ class BokatAPI:
         # First pass: find all activity names and their groups
         activity_names = []
         activity_groups = {}
+        activity_times = {}
         
         # Track the current group name as we scan through rows
         current_group = None
+        current_time = None
         
         # Scan through all rows in order
         for row in soup.find_all('tr'):
@@ -174,6 +176,14 @@ class BokatAPI:
                     current_group = next_td.text.strip()
                     _LOGGER.debug("Found group: %s", current_group)
             
+            # Check for time information
+            time_td = row.find('td', text=lambda t: t and 'Tid:' in t)
+            if time_td:
+                next_td = time_td.find_next_sibling('td')
+                if next_td:
+                    current_time = next_td.text.strip()
+                    _LOGGER.debug("Found time: %s", current_time)
+            
             # Check for activity name
             activity_td = row.find('td', text=lambda t: t and 'Aktivitet:' in t)
             if activity_td:
@@ -184,7 +194,9 @@ class BokatAPI:
                         activity_names.append(activity_name)
                         if current_group:
                             activity_groups[activity_name] = current_group
-                        _LOGGER.debug("Found activity: %s (Group: %s)", activity_name, current_group or "Unknown")
+                        if current_time:
+                            activity_times[activity_name] = current_time
+                        _LOGGER.debug("Found activity: %s (Group: %s, Time: %s)", activity_name, current_group or "Unknown", current_time or "Unknown")
         
         # Second pass: find all stat.jsp links in order
         stat_links = []
@@ -219,7 +231,7 @@ class BokatAPI:
         # Log what we found
         _LOGGER.info("Found %d activity names: %s", len(activity_names), ", ".join(activity_names))
         for name in activity_names:
-            _LOGGER.info("Activity '%s' has group '%s'", name, activity_groups.get(name, "Unknown Group"))
+            _LOGGER.info("Activity '%s' has group '%s' and time '%s'", name, activity_groups.get(name, "Unknown Group"), activity_times.get(name, "Unknown Time"))
         _LOGGER.info("Found %d stat.jsp links", len(stat_links))
         
         # Match activities with links in order
@@ -234,6 +246,10 @@ class BokatAPI:
                     "eventId": link_data["eventId"],
                     "userId": link_data["userId"]
                 }
+                
+                # Add time information if available
+                if activity_name in activity_times:
+                    activity["time"] = activity_times.get(activity_name)
                 
                 activities.append(activity)
         

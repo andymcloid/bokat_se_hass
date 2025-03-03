@@ -18,6 +18,7 @@
     "status_no_reply": "Inget svar",
     "action_attending": "Kommer",
     "action_not_attending": "Kommer inte",
+    "action_only_comment": "Bara kommentar",
     "field_comment": "Kommentar",
     "field_guests": "Gäster",
     "editor_show_badges": "Visa statusikoner",

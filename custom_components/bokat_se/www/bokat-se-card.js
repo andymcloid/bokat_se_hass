@@ -20,11 +20,33 @@ class BokatSeCard extends HTMLElement {
         this._loadingButton = null;
         this._comment = '';
         this._guests = 0;
+        this._translations = null;
         this.attachShadow({ mode: 'open' });
         
         // Bind the handlers
         this._handleClick = this._handleClick.bind(this);
         this._handleInput = this._handleInput.bind(this);
+    }
+
+    async loadTranslations(language) {
+        try {
+            const response = await fetch(`/bokat_se/localization/${language}.json`);
+            if (response.ok) {
+                this._translations = await response.json();
+            } else {
+                // Fallback to English if language not found
+                const fallbackResponse = await fetch('/bokat_se/localization/en.json');
+                this._translations = await fallbackResponse.json();
+            }
+        } catch (error) {
+            console.error('Failed to load translations:', error);
+            // Set empty translations object as fallback
+            this._translations = {};
+        }
+    }
+
+    translate(key, fallback) {
+        return this._translations?.[key] || fallback;
     }
 
     connectedCallback() {
@@ -56,6 +78,8 @@ class BokatSeCard extends HTMLElement {
     set hass(hass) {
         if (!this._initialized && hass) {
             this._initialized = true;
+            // Load translations when hass is first set
+            this.loadTranslations(hass.locale?.language || 'en');
         }
         this._hass = hass;
         this.render();
@@ -82,11 +106,11 @@ class BokatSeCard extends HTMLElement {
     _formatStatus(status) {
         switch(status) {
             case 'Attending':
-                return this._hass.localize('status_attending') || 'Attending';
+                return this.translate('status_attending', 'Attending');
             case 'NotAttending':
-                return this._hass.localize('status_not_attending') || 'Not Attending';
+                return this.translate('status_not_attending', 'Not Attending');
             case 'NoReply':
-                return this._hass.localize('status_no_reply') || 'No Reply';
+                return this.translate('status_no_reply', 'No Reply');
             default:
                 return status;
         }
@@ -346,13 +370,12 @@ class BokatSeCard extends HTMLElement {
                     border: none;
                     border-radius: 4px;
                     cursor: pointer;
-                    font-size: 14px;
+                    font-size: 12px;
                     font-weight: 700;
                     letter-spacing: 0.5px;
                     text-transform: uppercase;
                     transition: all 0.2s ease;
                     position: relative;
-                    min-height: 36px;
                     background: var(--primary-color);
                     color: white;
                     text-shadow: 0 1px 1px rgba(0,0,0,0.1);
@@ -370,6 +393,11 @@ class BokatSeCard extends HTMLElement {
 
                 .response-form button.warning {
                     background: var(--error-color, #f44336);
+                    color: white;
+                }
+
+                .response-form button.info {
+                    background: var(--info-color, #039be5);
                     color: white;
                 }
 
@@ -466,7 +494,7 @@ class BokatSeCard extends HTMLElement {
                                 type="button"
                             >
                                 <ha-icon icon="mdi:account-check"></ha-icon>
-                                <span>${this._hass.localize('action_attending') || 'Attending'}</span>
+                                <span>${this.translate('action_attending', 'Attending')}</span>
                                 ${this._loadingButton === 'attending-btn' ? '<div class="loading-spinner"></div>' : ''}
                             </button>
                             <button 
@@ -476,14 +504,24 @@ class BokatSeCard extends HTMLElement {
                                 type="button"
                             >
                                 <ha-icon icon="mdi:account-cancel"></ha-icon>
-                                <span>${this._hass.localize('action_not_attending') || 'Not Attending'}</span>
+                                <span>${this.translate('action_not_attending', 'Not Attending')}</span>
                                 ${this._loadingButton === 'not-attending-btn' ? '<div class="loading-spinner"></div>' : ''}
+                            </button>
+                            <button 
+                                id="only-comment-btn"
+                                class="info"
+                                ?disabled="${this._loading}"
+                                type="button"
+                            >
+                                <ha-icon icon="mdi:comment-text-outline"></ha-icon>
+                                <span>${this.translate('action_only_comment', 'Only Comment')}</span>
+                                ${this._loadingButton === 'only-comment-btn' ? '<div class="loading-spinner"></div>' : ''}
                             </button>
                         </div>
                         <div class="inputs">
                             <ha-textfield 
                                 class="comment-field" 
-                                label="${this._hass.localize('field_comment') || 'Comment'}" 
+                                label="${this.translate('field_comment', 'Comment')}" 
                                 id="comment"
                                 .value="${this._comment}"
                                 .disabled="${this._loading}"
@@ -492,7 +530,7 @@ class BokatSeCard extends HTMLElement {
                                 class="guests-field" 
                                 type="number" 
                                 min="0" 
-                                label="${this._hass.localize('field_guests') || 'Guests'}" 
+                                label="${this.translate('field_guests', 'Guests')}" 
                                 id="guests"
                                 .value="${this._guests}"
                                 .disabled="${this._loading}"
@@ -593,7 +631,6 @@ class BokatSeCard extends HTMLElement {
                 text-transform: uppercase;
                 transition: all 0.2s ease;
                 position: relative;
-                min-height: 36px;
                 background: var(--primary-color);
                 color: white;
                 text-shadow: 0 1px 1px rgba(0,0,0,0.1);
@@ -611,6 +648,11 @@ class BokatSeCard extends HTMLElement {
 
             button.warning {
                 background: var(--error-color, #f44336);
+                color: white;
+            }
+
+            button.info {
+                background: var(--info-color, #039be5);
                 color: white;
             }
 
@@ -673,6 +715,9 @@ class BokatSeCard extends HTMLElement {
             case 'not-attending-btn':
                 this._handleAttendanceChange('no', button.id);
                 break;
+            case 'only-comment-btn':
+                this._handleAttendanceChange('comment_only', button.id);
+                break;
         }
     }
 }
@@ -684,7 +729,8 @@ class BokatSeEditor extends LitElement {
     static get properties() {
         return {
             hass: { type: Object },
-            config: { type: Object }
+            config: { type: Object },
+            _translations: { type: Object }
         };
     }
 
@@ -697,6 +743,43 @@ class BokatSeEditor extends LitElement {
             show_summary: true,
             enable_response: false
         };
+        this._translations = null;
+        this._computeLabel = this._computeLabel.bind(this);
+    }
+
+    _computeLabel(schema) {
+        if (schema.label) {
+            return schema.label;
+        }
+        return schema.name;
+    }
+
+    async loadTranslations(language) {
+        try {
+            const response = await fetch(`/bokat_se/localization/${language}.json`);
+            if (response.ok) {
+                this._translations = await response.json();
+                this.requestUpdate();
+            } else {
+                const fallbackResponse = await fetch('/bokat_se/localization/en.json');
+                this._translations = await fallbackResponse.json();
+                this.requestUpdate();
+            }
+        } catch (error) {
+            console.error('Failed to load translations:', error);
+            this._translations = {};
+            this.requestUpdate();
+        }
+    }
+
+    translate(key, fallback) {
+        return this._translations?.[key] || fallback;
+    }
+
+    updated(changedProps) {
+        if (changedProps.has('hass') && this.hass) {
+            this.loadTranslations(this.hass.locale?.language || 'en');
+        }
     }
 
     setConfig(config) {
@@ -710,6 +793,10 @@ class BokatSeEditor extends LitElement {
     }
 
     get _schema() {
+        if (!this._translations) {
+            return [];
+        }
+
         return [
             { 
                 name: 'entity', 
@@ -728,33 +815,61 @@ class BokatSeEditor extends LitElement {
             },
             { 
                 name: 'show_badges', 
-                label: this.hass.localize('editor_show_badges') || 'Show status badges',
+                label: this.translate('editor_show_badges', 'Show status badges'),
                 selector: { boolean: {} }
             },
             { 
                 name: 'show_summary', 
-                label: this.hass.localize('editor_show_summary') || 'Show participant list',
+                label: this.translate('editor_show_summary', 'Show participant list'),
                 selector: { boolean: {} }
             },
             { 
                 name: 'enable_response', 
-                label: this.hass.localize('editor_enable_response') || 'Enable response form',
+                label: this.translate('editor_enable_response', 'Enable response form'),
                 selector: { boolean: {} }
             }
         ];
     }
 
     render() {
-        if (!this.hass) {
+        if (!this.hass || !this._translations) {
             return html`<div>Loading...</div>`;
         }
 
         return html`
+            <style>
+                ha-formfield {
+                    --mdc-typography-body2-font-size: 14px;
+                }
+                ha-form {
+                    --ha-form-element-spacing: 8px;
+                }
+                ::slotted(ha-formfield) {
+                    min-height: unset !important;
+                    padding: 4px 0 !important;
+                }
+                ha-selector-boolean {
+                    min-height: unset !important;
+                    padding: 4px 0 !important;
+                }
+                /* Target the deeper shadow DOM elements */
+                :host ::slotted(*) ha-formfield {
+                    min-height: unset !important;
+                    padding: 4px 0 !important;
+                }
+                /* Force all form fields to have minimal height */
+                :host {
+                    --mdc-checkbox-touch-target-size: 24px !important;
+                    --mdc-checkbox-ripple-size: 24px !important;
+                    --mdc-icon-button-size: 24px !important;
+                }
+            </style>
             <div class="editor">
                 <ha-form
                     .hass=${this.hass}
                     .data=${this.config}
                     .schema=${this._schema}
+                    .computeLabel=${this._computeLabel}
                     @value-changed=${this._valueChanged}
                 ></ha-form>
             </div>
