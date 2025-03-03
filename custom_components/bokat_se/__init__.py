@@ -144,21 +144,46 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Handle respond service call."""
         entity_id = call.data[ATTR_ENTITY_ID]
         attendance = call.data[ATTR_ATTENDANCE]
-        comment = call.data.get(ATTR_COMMENT, "")
+        # Ensure proper UTF-8 encoding for the comment
+        comment = call.data.get(ATTR_COMMENT, "").encode('utf-8').decode('utf-8')
         guests = call.data.get(ATTR_GUESTS, 0)
 
-        # Get the API instance and activity info
-        api = hass.data[DOMAIN][entity_id]["api"]
+        # First check if the entity exists
         state = hass.states.get(entity_id)
         if not state:
             _LOGGER.error("Entity %s not found", entity_id)
             return
 
+        # Get the eventId from the entity's attributes
         event_id = state.attributes.get("eventId")
         user_id = state.attributes.get("userId")
         if not event_id or not user_id:
             _LOGGER.error("Missing eventId or userId for %s", entity_id)
             return
+
+        # Find the coordinator and API instance for this entity
+        api_found = False
+        for entry_data in hass.data[DOMAIN].values():
+            coordinator = entry_data["coordinator"]
+            if not coordinator.data:
+                continue
+
+            # Try to find a matching activity by eventId
+            for activity in coordinator.data:
+                if activity.get("eventId") == event_id:
+                    _LOGGER.debug("Found matching activity for %s", entity_id)
+                    api = entry_data["api"]
+                    api_found = True
+                    break
+            if api_found:
+                break
+
+        if not api_found:
+            _LOGGER.error("No API instance found for entity %s (eventId: %s)", entity_id, event_id)
+            return
+
+        # Log the comment for debugging
+        _LOGGER.debug("Sending comment with encoding: %r", comment)
 
         # Send the response
         success = await api.reply_to_activity(
@@ -171,7 +196,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         if success:
             # Trigger a refresh
-            coordinator = hass.data[DOMAIN][entity_id]["coordinator"]
             await coordinator.async_refresh()
         else:
             _LOGGER.error("Failed to respond to activity")

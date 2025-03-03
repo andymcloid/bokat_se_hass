@@ -429,14 +429,18 @@ class BokatAPI:
         url = f"{self.base_url}statAnswer.jsp?userId={user_id}&eventId={event_id}"
         
         headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Origin": "https://bokat.se"
+            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "sv-SE,sv;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Origin": "https://bokat.se",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
 
         # Base data with optional comment
         data = {}
         if comment:
-            data["comment"] = comment
+            # Ensure comment is properly encoded
+            data["comment"] = comment.encode('utf-8').decode('utf-8')
 
         # Add specific fields based on reply type
         if reply_type == 'yes':
@@ -459,7 +463,7 @@ class BokatAPI:
             return False
 
         try:
-            _LOGGER.debug("Posting Payload: %s", data)
+
             async with self._session.post(
                 url=url,
                 headers=headers,
@@ -467,14 +471,14 @@ class BokatAPI:
                 cookies=self._cookies,
                 allow_redirects=True
             ) as response:
+                response_text = await response.text()
+                _LOGGER.debug("Response status: %s, text: %s", response.status, response_text[:200])
+
                 if response.status != 200:
                     _LOGGER.error("Failed to submit reply: %s", response.status)
                     return False
                     
-                # Check response content for success indicators
-                html = await response.text()
-
-                if '<b>Sparat.</b>' in html :
+                if '<b>Sparat.</b>' in response_text:
                     _LOGGER.info("Successfully replied to activity %s", event_id)
                     return True
                 else:
