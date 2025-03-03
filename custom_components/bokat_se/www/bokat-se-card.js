@@ -73,7 +73,7 @@ class BokatSeCard extends HTMLElement {
         }
 
         // Get data from the sensor entity attributes
-        const activityName = state.attributes.activity_name || 'Unknown Activity';
+        const activityName = state.attributes.activity_name || state.attributes.friendly_name || entityId;
         
         // Use title from config if available, otherwise use activity name
         const cardTitle = this._config.title || activityName;
@@ -81,16 +81,17 @@ class BokatSeCard extends HTMLElement {
         // Participant information
         const participants = state.attributes.participants || [];
         
+        // Get the total attending count from the entity state
+        const totalAttending = state.state || 0;
+        
         // Filter participants by status
         const attendingParticipants = this._filterParticipants(participants, 'Attending');
         const notAttendingParticipants = this._filterParticipants(participants, 'NotAttending');
         const noReplyParticipants = this._filterParticipants(participants, 'NoReply');
         
         // Calculate counts from the filtered arrays
-        const attendingCount = attendingParticipants.length;
         const notAttendingCount = notAttendingParticipants.length;
         const noResponseCount = noReplyParticipants.length;
-        const totalParticipants = attendingCount + notAttendingCount + noResponseCount;
         const guestsCount = participants.reduce((sum, p) => sum + (p.guests || 0), 0);
 
         this.innerHTML = `
@@ -100,7 +101,7 @@ class BokatSeCard extends HTMLElement {
                 </div>
                 <div class="card-content">
                     <div class="summary">
-                        <h3>Totalt antal spelare ${totalParticipants}</h3>
+                        <h3>Totalt antal spelare ${totalAttending}</h3>
                         <p>
                             <em>Kommer inte:</em> ${notAttendingCount}<br>
                             <em>Inget svar:</em> ${noResponseCount}<br>
@@ -211,18 +212,27 @@ class BokatSeCard extends HTMLElement {
 }
 
 class BokatSeEditor extends HTMLElement {
+    static get properties() {
+        return {
+            hass: {},
+            _config: {}
+        };
+    }
+
     constructor() {
         super();
         this._config = {};
-        this._hass = null;
+        this.attachShadow({ mode: 'open' });
     }
 
     setConfig(config) {
         this._config = config || {};
+        this.render();
     }
 
     set hass(hass) {
         this._hass = hass;
+        this.render();
     }
 
     render() {
@@ -234,9 +244,31 @@ class BokatSeEditor extends HTMLElement {
             .filter(entityId => entityId.startsWith('sensor.bokat_se'))
             .sort();
 
-        this.innerHTML = `
+        if (!this.shadowRoot) return;
+
+        this.shadowRoot.innerHTML = `
+            <style>
+                ha-entity-picker {
+                    display: block;
+                    width: 100%;
+                    margin-bottom: 16px;
+                }
+                paper-input {
+                    display: block;
+                    width: 100%;
+                }
+                .option {
+                    margin-bottom: 16px;
+                }
+                .option label {
+                    display: block;
+                    margin-bottom: 4px;
+                    color: var(--primary-text-color);
+                }
+            </style>
             <div class="card-config">
                 <div class="option">
+                    <label>Entity:</label>
                     <ha-entity-picker
                         .hass=${this._hass}
                         .value="${this._config.entity || ''}"
@@ -248,8 +280,8 @@ class BokatSeEditor extends HTMLElement {
                     ></ha-entity-picker>
                 </div>
                 <div class="option">
+                    <label>Title (optional):</label>
                     <paper-input
-                        label="Title (optional)"
                         .value="${this._config.title || ''}"
                         .configValue=${'title'}
                         @value-changed=${this._valueChanged}
@@ -260,7 +292,7 @@ class BokatSeEditor extends HTMLElement {
     }
 
     _valueChanged(ev) {
-        if (!this._config || !this._hass) {
+        if (!this._config) {
             return;
         }
 

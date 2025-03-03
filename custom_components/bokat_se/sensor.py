@@ -16,7 +16,7 @@ try:
 except ImportError:
     from ..bokat_se_lib import BokatAPI
 
-from .const import DOMAIN
+from .const import DOMAIN, ICON
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,6 +78,11 @@ class BokatActivitySensor(CoordinatorEntity, SensorEntity):
         """Return the state of the sensor."""
         # Return totalAttending as the state
         return str(self._activity.get("total_attending", 0))
+
+    @property
+    def icon(self) -> str:
+        """Return the icon of the sensor."""
+        return ICON
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

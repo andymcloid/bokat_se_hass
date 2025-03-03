@@ -47,4 +47,4 @@ DEFAULT_NAME = "Bokat.se"
 DEFAULT_SCAN_INTERVAL = 30  # minutes
 
 # Icons
-ICON = "mdi:calendar-check" 
+ICON = "mdi:yoga" 
