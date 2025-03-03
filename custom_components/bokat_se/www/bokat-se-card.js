@@ -23,7 +23,13 @@ class BokatSeCard extends HTMLElement {
         if (!config.entity) {
             throw new Error('You need to define an entity');
         }
-        this._config = config;
+        this._config = {
+            show_badges: true,
+            show_summary: true,
+            enable_response: false,
+            title: '',
+            ...config
+        };
     }
 
     set hass(hass) {
@@ -96,8 +102,7 @@ class BokatSeCard extends HTMLElement {
                     icon="${statusInfo.icon}"
                     style="color: ${statusInfo.color};"
                 ></ha-icon>
-                <span class="name">${participant.name}</span>
-                ${participant.guests ? `<span class="guests">+${participant.guests}</span>` : ''}
+                <span class="name">${participant.name}${participant.guests ? ` +${participant.guests}` : ''}</span>
                 ${participant.comment ? `<div class="comment">${participant.comment}</div>` : ''}
             </div>
         `;
@@ -113,7 +118,7 @@ class BokatSeCard extends HTMLElement {
 
         if (!state) {
             this.shadowRoot.innerHTML = `
-                <ha-card header="Bokat.se">
+                <ha-card>
                     <div class="card-content">
                         Entity not found: ${entityId}
                     </div>
@@ -130,10 +135,6 @@ class BokatSeCard extends HTMLElement {
         const attendingParticipants = this._filterParticipants(participants, 'Attending');
         const notAttendingParticipants = this._filterParticipants(participants, 'NotAttending');
         const noReplyParticipants = this._filterParticipants(participants, 'NoReply');
-        
-        const notAttendingCount = notAttendingParticipants.length;
-        const noResponseCount = noReplyParticipants.length;
-        const guestsCount = participants.reduce((sum, p) => sum + (p.guests || 0), 0);
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -283,34 +284,132 @@ class BokatSeCard extends HTMLElement {
                 .stat.noreply ha-icon {
                     color: var(--light-grey-color, #9e9e9e);
                 }
+
+                .response-form {
+                    padding: 16px;
+                    border-top: 1px solid var(--divider-color);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .response-form .buttons {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .response-form ha-button {
+                    flex: 1;
+                    --ha-button-background-color: var(--primary-background-color);
+                    --ha-button-text-color: var(--primary-text-color);
+                    --ha-button-border-color: var(--divider-color);
+                    --ha-button-icon-color: var(--primary-text-color);
+                }
+
+                .response-form ha-button.success {
+                    --ha-button-background-color: var(--success-color);
+                    --ha-button-text-color: white;
+                    --ha-button-border-color: var(--success-color);
+                    --ha-button-icon-color: white;
+                }
+
+                .response-form ha-button.warning {
+                    --ha-button-background-color: var(--error-color);
+                    --ha-button-text-color: white;
+                    --ha-button-border-color: var(--error-color);
+                    --ha-button-icon-color: white;
+                }
+
+                .response-form .inputs {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .response-form .comment-field {
+                    flex: 1;
+                }
+
+                .response-form .guests-field {
+                    width: 80px;
+                }
             </style>
             <ha-card>
                 <div class="card-header">
                     <div class="name">${cardTitle}</div>
-                    <div class="stats">
-                        <span class="stat attending">
-                            <ha-icon icon="mdi:account-check"></ha-icon>
-                            ${totalAttending}
-                        </span>
-                        <span class="stat not-attending">
-                            <ha-icon icon="mdi:account-cancel"></ha-icon>
-                            ${notAttendingParticipants.length}
-                        </span>
-                        <span class="stat noreply">
-                            <ha-icon icon="mdi:account-question"></ha-icon>
-                            ${noReplyParticipants.length}
-                        </span>
-                    </div>
+                    ${this._config.show_badges ? `
+                        <div class="stats">
+                            <span class="stat attending">
+                                <ha-icon icon="mdi:account-check"></ha-icon>
+                                ${totalAttending}
+                            </span>
+                            <span class="stat not-attending">
+                                <ha-icon icon="mdi:account-cancel"></ha-icon>
+                                ${notAttendingParticipants.length}
+                            </span>
+                            <span class="stat noreply">
+                                <ha-icon icon="mdi:account-question"></ha-icon>
+                                ${noReplyParticipants.length}
+                            </span>
+                        </div>
+                    ` : ''}
                 </div>
-                <div class="card-content">
-                    <div class="participants-section">
-                        ${[...attendingParticipants, ...notAttendingParticipants, ...noReplyParticipants]
-                            .map(p => this._renderParticipant(p))
-                            .join('')}
+                ${this._config.show_summary ? `
+                    <div class="card-content">
+                        <div class="participants-section">
+                            ${[...attendingParticipants, ...notAttendingParticipants, ...noReplyParticipants]
+                                .map(p => this._renderParticipant(p))
+                                .join('')}
+                        </div>
                     </div>
-                </div>
+                ` : ''}
+                ${this._config.enable_response ? `
+                    <div class="response-form">
+                        <div class="buttons">
+                            <ha-button 
+                                id="attending-btn"
+                                class="success"
+                                @click=${this._handleAttending}
+                            >
+                                <ha-icon icon="mdi:account-check" slot="icon"></ha-icon>
+                                Attending
+                            </ha-button>
+                            <ha-button 
+                                id="not-attending-btn"
+                                class="warning"
+                                @click=${this._handleNotAttending}
+                            >
+                                <ha-icon icon="mdi:account-cancel" slot="icon"></ha-icon>
+                                Not Attending
+                            </ha-button>
+                        </div>
+                        <div class="inputs">
+                            <ha-textfield class="comment-field" label="Comment" id="comment"></ha-textfield>
+                            <ha-textfield class="guests-field" type="number" min="0" label="Guests" id="guests"></ha-textfield>
+                        </div>
+                    </div>
+                ` : ''}
             </ha-card>
         `;
+    }
+
+    _handleAttending() {
+        this._handleAttendanceChange('yes');
+    }
+
+    _handleNotAttending() {
+        this._handleAttendanceChange('no');
+    }
+
+    _handleAttendanceChange(attendance) {
+        const comment = this.shadowRoot.querySelector('#comment')?.value || '';
+        const guests = parseInt(this.shadowRoot.querySelector('#guests')?.value || '0', 10);
+        
+        this._hass.callService('bokat_se', 'respond', {
+            entity_id: this._config.entity,
+            attendance: attendance,
+            comment,
+            guests: attendance === 'yes' ? guests : 0
+        });
     }
     
     // This is needed to register the editor with the card
@@ -320,7 +419,13 @@ class BokatSeCard extends HTMLElement {
     
     // This is needed to provide default config
     static getStubConfig() {
-        return { entity: '' };
+        return { 
+            entity: '',
+            title: '',
+            show_badges: true,
+            show_summary: true,
+            enable_response: false
+        };
     }
 }
 
@@ -337,27 +442,26 @@ class BokatSeEditor extends LitElement {
 
     constructor() {
         super();
-        this.config = { entity: '' };
+        this.config = { 
+            entity: '',
+            title: '',
+            show_badges: true,
+            show_summary: true,
+            enable_response: false
+        };
     }
 
     setConfig(config) {
-        this.config = { ...config };
-    }
-
-    static get styles() {
-        return css`
-            .editor {
-                padding: 8px;
-            }
-        `;
+        this.config = {
+            show_badges: true,
+            show_summary: true,
+            enable_response: false,
+            title: '',
+            ...config
+        };
     }
 
     get _schema() {
-        // Get all sensor entities that start with 'sensor.bokat_se'
-        const entities = Object.keys(this.hass.states)
-            .filter(entityId => entityId.startsWith('sensor.bokat_se'))
-            .sort();
-
         return [
             { 
                 name: 'entity', 
@@ -369,10 +473,25 @@ class BokatSeEditor extends LitElement {
                     } 
                 } 
             },
+            {
+                name: 'title',
+                label: this.hass.localize('ui.panel.lovelace.editor.card.generic.title') || 'Title (Optional)',
+                selector: { text: {} }
+            },
             { 
-                name: 'title', 
-                label: this.hass.localize('ui.panel.lovelace.editor.card.generic.title') || 'Title', 
-                selector: { text: {} } 
+                name: 'show_badges', 
+                label: this.hass.localize('ui.panel.lovelace.editor.card.bokat-se.show_badges') || 'Show status badges',
+                selector: { boolean: {} }
+            },
+            { 
+                name: 'show_summary', 
+                label: this.hass.localize('ui.panel.lovelace.editor.card.bokat-se.show_summary') || 'Show participant list',
+                selector: { boolean: {} }
+            },
+            { 
+                name: 'enable_response', 
+                label: this.hass.localize('ui.panel.lovelace.editor.card.bokat-se.enable_response') || 'Enable response form',
+                selector: { boolean: {} }
             }
         ];
     }
@@ -395,20 +514,8 @@ class BokatSeEditor extends LitElement {
     }
 
     _valueChanged(ev) {
-        if (!this.config) {
-            return;
-        }
-
-        const newConfig = { ...this.config, ...ev.detail.value };
-        
-        // Dispatch the config-changed event
-        const event = new CustomEvent('config-changed', {
-            detail: { config: newConfig },
-            bubbles: true,
-            composed: true,
-        });
-        this.dispatchEvent(event);
-        this.config = newConfig;
+        const config = ev.detail.value;
+        this.dispatchEvent(new CustomEvent('config-changed', { detail: { config } }));
     }
 }
 

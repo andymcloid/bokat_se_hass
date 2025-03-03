@@ -2,6 +2,8 @@
 
 A custom integration for Home Assistant that connects to Bokat.se and allows you to track your activities.
 
+![Bokat.se Integration](./screenshot.png)
+
 ## Features
 
 - Login to Bokat.se with your credentials
