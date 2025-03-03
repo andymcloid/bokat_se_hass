@@ -171,7 +171,7 @@ class BokatSeCard extends HTMLElement {
 
     render() {
         if (!this._hass || !this._config) {
-            console.log('Render skipped - missing hass or config');
+            // console.log('Render skipped - missing hass or config');
             return;
         }
 

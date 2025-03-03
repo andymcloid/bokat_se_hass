@@ -1,10 +1,8 @@
 """BokatAPI module for interacting with bokat.se."""
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
-import sys
 import json
 from typing import Dict, List, Optional, Any
 
@@ -174,7 +172,7 @@ class BokatAPI:
                 next_td = group_td.find_next_sibling('td')
                 if next_td:
                     current_group = next_td.text.strip()
-                    _LOGGER.debug("Found group: %s", current_group)
+                    # _LOGGER.debug("Found group: %s", current_group)
             
             # Check for time information
             time_td = row.find('td', text=lambda t: t and 'Tid:' in t)
@@ -182,7 +180,7 @@ class BokatAPI:
                 next_td = time_td.find_next_sibling('td')
                 if next_td:
                     current_time = next_td.text.strip()
-                    _LOGGER.debug("Found time: %s", current_time)
+                    # _LOGGER.debug("Found time: %s", current_time)
             
             # Check for activity name
             activity_td = row.find('td', text=lambda t: t and 'Aktivitet:' in t)
@@ -196,7 +194,7 @@ class BokatAPI:
                             activity_groups[activity_name] = current_group
                         if current_time:
                             activity_times[activity_name] = current_time
-                        _LOGGER.debug("Found activity: %s (Group: %s, Time: %s)", activity_name, current_group or "Unknown", current_time or "Unknown")
+                        # _LOGGER.debug("Found activity: %s (Group: %s, Time: %s)", activity_name, current_group or "Unknown", current_time or "Unknown")
         
         # Second pass: find all stat.jsp links in order
         stat_links = []
@@ -231,7 +229,8 @@ class BokatAPI:
         # Log what we found
         _LOGGER.info("Found %d activity names: %s", len(activity_names), ", ".join(activity_names))
         for name in activity_names:
-            _LOGGER.info("Activity '%s' has group '%s' and time '%s'", name, activity_groups.get(name, "Unknown Group"), activity_times.get(name, "Unknown Time"))
+            # _LOGGER.info("Activity '%s' has group '%s' and time '%s'", name, activity_groups.get(name, "Unknown Group"), activity_times.get(name, "Unknown Time"))
+            pass
         _LOGGER.info("Found %d stat.jsp links", len(stat_links))
         
         # Match activities with links in order
@@ -488,7 +487,8 @@ class BokatAPI:
                 allow_redirects=True
             ) as response:
                 response_text = await response.text()
-                _LOGGER.debug("Response status: %s, text: %s", response.status, response_text[:200])
+                # Log response for debugging
+                # _LOGGER.debug("Response status: %s, text: %s", response.status, response_text[:200])
 
                 if response.status != 200:
                     _LOGGER.error("Failed to submit reply: %s", response.status)

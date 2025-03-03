@@ -3,9 +3,6 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
-from datetime import timedelta
-from typing import Any
 from pathlib import Path
 
 import voluptuous as vol
@@ -119,12 +116,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 if not coordinator.data:
                     continue
                     
-                _LOGGER.debug("Checking coordinator data for eventId %s", event_id)
-                
                 # Try to find a matching activity by eventId
                 for activity in coordinator.data:
                     if activity.get("eventId") == event_id:
-                        _LOGGER.debug("Found matching activity for %s", entity_id)
                         entity_found = True
                         await coordinator.async_refresh()
                         break
@@ -171,7 +165,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             # Try to find a matching activity by eventId
             for activity in coordinator.data:
                 if activity.get("eventId") == event_id:
-                    _LOGGER.debug("Found matching activity for %s", entity_id)
                     api = entry_data["api"]
                     api_found = True
                     break
@@ -181,9 +174,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         if not api_found:
             _LOGGER.error("No API instance found for entity %s (eventId: %s)", entity_id, event_id)
             return
-
-        # Log the comment for debugging
-        _LOGGER.debug("Sending comment with encoding: %r", comment)
 
         # Send the response
         success = await api.reply_to_activity(
