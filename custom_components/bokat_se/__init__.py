@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import timedelta
 from typing import Any
+from pathlib import Path
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
@@ -19,6 +20,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.components.http import HomeAssistantView
+from aiohttp import web
 
 # Try to import from the HACS location first, then fall back to development location
 try:
@@ -26,7 +29,7 @@ try:
 except ImportError:
     from ..bokat_se_lib import BokatAPI
 
-from .const import DOMAIN, SCAN_INTERVAL
+from .const import DOMAIN, SCAN_INTERVAL, VERSION
 from .frontend import async_register_frontend
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,8 +49,42 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
+class BokatSeCardView(HomeAssistantView):
+    """View to serve Bokat.se card from custom_components directory."""
+
+    requires_auth = False
+    url = r"/bokat_se/{path:.+}"
+    name = "bokat_se_files"
+
+    def __init__(self, component_path):
+        """Initialize the view with the component path."""
+        self.component_path = component_path
+
+    async def get(self, request, path):
+        """Serve the requested file."""
+        file_path = Path(self.component_path) / "www" / path.split("?")[0]
+        
+        if not file_path.exists():
+            return web.Response(status=404)
+        
+        with open(file_path, "r") as file:
+            content = file.read()
+        
+        return web.Response(
+            body=content,
+            content_type="application/javascript",
+            charset="utf-8"
+        )
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Bokat.se component."""
+    # Register the static path for serving the card
+    component_path = Path(__file__).parent
+    
+    # Register the view for serving files
+    hass.http.register_view(BokatSeCardView(component_path))
+    
     # Register frontend resources
     await async_register_frontend(hass)
     return True
