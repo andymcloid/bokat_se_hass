@@ -6,12 +6,10 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
 
 - Login to Bokat.se with your credentials
 - View all activities
-- Select which activity to track
 - Display activity status in Home Assistant
 - Regular updates of activity status
 - View participant information including attendance status and comments
 - Respond to events with attendance status, guest count, and comments
-- Configurable update interval
 - Custom Lovelace card for easy interaction
 - Standalone BokatAPI module for programmatic access to Bokat.se
 
@@ -66,7 +64,6 @@ After configuration, a sensor will be created with the name based on your select
 The integration provides the following services:
 
 - `bokat_se.refresh`: Refresh the data from Bokat.se
-- `bokat_se.select_activity`: Select a different activity to track
 - `bokat_se.respond`: Respond to an event with attendance status, comment, and guests
 
 ### Service: bokat_se.refresh
@@ -76,15 +73,6 @@ Refresh the data from Bokat.se.
 | Parameter | Description |
 |-----------|-------------|
 | entity_id | (Optional) The entity ID of the sensor to refresh. If not provided, all sensors will be refreshed. |
-
-### Service: bokat_se.select_activity
-
-Select a different activity to track.
-
-| Parameter | Description |
-|-----------|-------------|
-| entity_id | (Required) The entity ID of the sensor. |
-| activity_url | (Required) The URL of the activity to select. |
 
 ### Service: bokat_se.respond
 
@@ -193,10 +181,3 @@ automation:
 ## License
 
 MIT
-
-## BokatAPI Module
-
-The integration includes a standalone BokatAPI module that can be used independently of Home Assistant. This module provides programmatic access to Bokat.se with the following features:
-
-- `list_activities(username, password)`: Returns an array of activities with name and URL
-- `get_activity(url)`: Returns an object with who signed up and an array with participants and their data scraped from that URL in real-time

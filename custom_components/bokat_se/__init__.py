@@ -99,18 +99,41 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         entity_id = call.data.get(ATTR_ENTITY_ID)
         
         if entity_id:
+            # First check if the entity exists
+            state = hass.states.get(entity_id)
+            if not state:
+                _LOGGER.error("Entity %s not found", entity_id)
+                return
+                
+            # Get the eventId from the entity's attributes
+            event_id = state.attributes.get("eventId")
+            if not event_id:
+                _LOGGER.error("No eventId found in entity %s", entity_id)
+                return
+                
             # Find the coordinator for this entity
             entity_found = False
+            
             for entry_data in hass.data[DOMAIN].values():
                 coordinator = entry_data["coordinator"]
-                if entity_id in coordinator.data:
-                    entity_found = True
-                    await coordinator.async_refresh()
+                if not coordinator.data:
+                    continue
+                    
+                _LOGGER.debug("Checking coordinator data for eventId %s", event_id)
+                
+                # Try to find a matching activity by eventId
+                for activity in coordinator.data:
+                    if activity.get("eventId") == event_id:
+                        _LOGGER.debug("Found matching activity for %s", entity_id)
+                        entity_found = True
+                        await coordinator.async_refresh()
+                        break
+                        
+                if entity_found:
                     break
             
             if not entity_found:
-                _LOGGER.error("Entity %s not found", entity_id)
-                return
+                _LOGGER.error("No coordinator found for entity %s (eventId: %s)", entity_id, event_id)
         else:
             # Refresh all coordinators
             for entry_data in hass.data[DOMAIN].values():
