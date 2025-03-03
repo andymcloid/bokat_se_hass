@@ -1,46 +1,81 @@
 {
-    "title": "Bokat.se",
-    "user_title": "Anslut till Bokat.se",
-    "user_description": "Konfigurera Bokat.se integration",
-    "user_username": "Användarnamn",
-    "user_password": "Lösenord",
-    "activity_title": "Välj aktivitet",
-    "activity_description": "Välj vilken aktivitet du vill följa",
-    "activity_url": "Aktivitet",
-    "activity_scan_interval": "Uppdateringsintervall (minuter, mellan 5-180)",
-    "error_cannot_connect": "Kunde inte ansluta",
-    "error_invalid_auth": "Ogiltig autentisering",
-    "error_unknown": "Oväntat fel",
-    "abort_already_configured": "Kontot är redan konfigurerat",
-    "create_entry_default": "Lyckades! Aktiviteten har lagts till.",
-    "refresh_name": "Uppdatera",
-    "refresh_description": "Uppdaterar data från Bokat.se",
-    "refresh_entity_name": "Entitet",
-    "refresh_entity_description": "Sensorn att uppdatera. Lämna tomt för att uppdatera alla sensorer.",
-    "select_activity_name": "Välj aktivitet",
-    "select_activity_description": "Välj en annan aktivitet att följa",
-    "select_activity_entity_name": "Entitet",
-    "select_activity_entity_description": "Sensorn att uppdatera",
-    "select_activity_url_name": "Aktivitets-URL",
-    "select_activity_url_description": "URL:en för aktiviteten att följa",
-    "respond_name": "Svara",
-    "respond_description": "Svara på en händelse med närvarostatus",
-    "respond_entity_name": "Entitet",
-    "respond_entity_description": "Sensorn att svara på",
-    "respond_attendance_name": "Närvaro",
-    "respond_attendance_description": "Din närvarostatus (yes, no, eller comment_only)",
-    "respond_comment_name": "Kommentar",
-    "respond_comment_description": "Valfri kommentar att inkludera med ditt svar",
-    "respond_guests_name": "Gäster",
-    "respond_guests_description": "Antal gäster att ta med (standard: 0)",
-    "status_attending": "Kommer",
-    "status_not_attending": "Kommer inte",
-    "status_no_reply": "Inget svar",
-    "action_attending": "Kommer",
-    "action_not_attending": "Kommer inte",
-    "field_comment": "Kommentar",
-    "field_guests": "Gäster",
-    "editor_show_badges": "Visa statusikoner",
-    "editor_show_summary": "Visa deltagarlista",
-    "editor_enable_response": "Aktivera svarsformulär"
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anslut till Bokat.se",
+        "description": "Ange dina inloggningsuppgifter för Bokat.se",
+        "data": {
+          "username": "E-post",
+          "password": "Lösenord"
+        }
+      },
+      "activity": {
+        "title": "Välj aktivitet",
+        "description": "Välj vilken aktivitet du vill följa",
+        "data": {
+          "activity_url": "Aktivitet",
+          "scan_interval": "Uppdateringsintervall (minuter, mellan 5-180)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunde inte ansluta till Bokat.se",
+      "invalid_auth": "Ogiltigt användarnamn eller lösenord",
+      "unknown": "Oväntat fel"
+    },
+    "abort": {
+      "already_configured": "Detta konto är redan konfigurerat"
+    },
+    "create_entry": {
+      "default": "Lyckades! Aktiviteten har lagts till."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Uppdatera",
+      "description": "Uppdaterar data från Bokat.se",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Sensorn att uppdatera. Lämna tomt för att uppdatera alla sensorer."
+        }
+      }
+    },
+    "select_activity": {
+      "name": "Välj aktivitet",
+      "description": "Välj en annan aktivitet att följa",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Sensorn att uppdatera"
+        },
+        "activity_url": {
+          "name": "Aktivitets-URL",
+          "description": "URL:en för aktiviteten att följa"
+        }
+      }
+    },
+    "respond": {
+      "name": "Svara",
+      "description": "Svara på en händelse med närvarostatus",
+      "fields": {
+        "entity_id": {
+          "name": "Entitet",
+          "description": "Sensorn att svara på"
+        },
+        "attendance": {
+          "name": "Närvaro",
+          "description": "Din närvarostatus (yes, no, eller comment_only)"
+        },
+        "comment": {
+          "name": "Kommentar",
+          "description": "Valfri kommentar att inkludera med ditt svar"
+        },
+        "guests": {
+          "name": "Gäster",
+          "description": "Antal gäster att ta med (standard: 0)"
+        }
+      }
+    }
+  }
 } 

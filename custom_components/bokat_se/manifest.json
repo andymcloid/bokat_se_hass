@@ -1,14 +1,14 @@
 {
   "domain": "bokat_se",
   "name": "Bokat.se",
-  "version": "2.1.0",
-  "documentation": "https://github.com/bokaitse/home-assistant",
-  "dependencies": ["http"],
   "after_dependencies": ["lovelace"],
   "codeowners": ["@bokaitse"],
-  "requirements": ["beautifulsoup4>=4.12.2"],
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "dependencies": ["http"],
+  "documentation": "https://github.com/bokaitse/home-assistant",
+  "iot_class": "cloud_polling",
+  "requirements": ["beautifulsoup4>=4.12.2"],
+  "version": "2.1.0"
 } 
 
 
