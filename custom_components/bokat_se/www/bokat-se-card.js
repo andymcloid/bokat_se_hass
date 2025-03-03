@@ -16,7 +16,66 @@ class BokatSeCard extends HTMLElement {
         super();
         this._config = {};
         this._hass = null;
+        this._loading = false;
+        this._initialized = false;
         this.attachShadow({ mode: 'open' });
+        
+        // Bind event handlers
+        this._handleButtonClick = this._handleButtonClick.bind(this);
+    }
+
+    connectedCallback() {
+        if (window.customCards) {
+            window.customCards.push({
+                type: "bokat-se-card",
+                name: "Bokat.se Card",
+                preview: false,
+            });
+        }
+
+        // Force connection to Home Assistant
+        if (window.hassConnection) {
+            window.hassConnection.then(() => {
+                this._initialized = true;
+                this.render();
+            });
+        }
+
+        // Add click handler to the response form container
+        this.shadowRoot.addEventListener('click', this._handleButtonClick);
+    }
+
+    disconnectedCallback() {
+        this.shadowRoot.removeEventListener('click', this._handleButtonClick);
+    }
+
+    set hass(hass) {
+        if (!this._initialized && hass) {
+            this._initialized = true;
+        }
+        this._hass = hass;
+        this.render();
+    }
+
+    _handleButtonClick(event) {
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        console.log('Button clicked:', button.id);
+
+        if (!this._hass || !window.hassConnection) {
+            console.error('No Home Assistant connection');
+            return;
+        }
+
+        switch(button.id) {
+            case 'attending-btn':
+                this._handleAttendanceChange('yes');
+                break;
+            case 'not-attending-btn':
+                this._handleAttendanceChange('no');
+                break;
+        }
     }
 
     setConfig(config) {
@@ -30,11 +89,6 @@ class BokatSeCard extends HTMLElement {
             title: '',
             ...config
         };
-    }
-
-    set hass(hass) {
-        this._hass = hass;
-        this.render();
     }
 
     getCardSize() {
@@ -110,6 +164,7 @@ class BokatSeCard extends HTMLElement {
 
     render() {
         if (!this._hass || !this._config) {
+            console.log('Render skipped - missing hass or config');
             return;
         }
 
@@ -298,26 +353,62 @@ class BokatSeCard extends HTMLElement {
                     gap: 8px;
                 }
 
-                .response-form ha-button {
+                .response-form button {
                     flex: 1;
-                    --ha-button-background-color: var(--primary-background-color);
-                    --ha-button-text-color: var(--primary-text-color);
-                    --ha-button-border-color: var(--divider-color);
-                    --ha-button-icon-color: var(--primary-text-color);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    transition: all 0.2s ease;
+                    position: relative;
+                    min-height: 36px;
+                    background: var(--primary-color);
+                    color: var(--text-primary-color, white);
                 }
 
-                .response-form ha-button.success {
-                    --ha-button-background-color: var(--success-color);
-                    --ha-button-text-color: white;
-                    --ha-button-border-color: var(--success-color);
-                    --ha-button-icon-color: white;
+                .response-form button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
                 }
 
-                .response-form ha-button.warning {
-                    --ha-button-background-color: var(--error-color);
-                    --ha-button-text-color: white;
-                    --ha-button-border-color: var(--error-color);
-                    --ha-button-icon-color: white;
+                .response-form button.success {
+                    background: var(--success-color, #4caf50);
+                }
+
+                .response-form button.warning {
+                    background: var(--error-color, #f44336);
+                }
+
+                .response-form button:hover:not(:disabled) {
+                    opacity: 0.9;
+                }
+
+                .response-form button:active:not(:disabled) {
+                    transform: scale(0.98);
+                }
+
+                .response-form .loading-spinner {
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid transparent;
+                    border-top-color: currentColor;
+                    border-radius: 50%;
+                    animation: spin 0.6s linear infinite;
+                    position: absolute;
+                    right: 8px;
+                }
+
+                @keyframes spin {
+                    to {
+                        transform: rotate(360deg);
+                    }
                 }
 
                 .response-form .inputs {
@@ -365,22 +456,24 @@ class BokatSeCard extends HTMLElement {
                 ${this._config.enable_response ? `
                     <div class="response-form">
                         <div class="buttons">
-                            <ha-button 
+                            <button 
                                 id="attending-btn"
                                 class="success"
-                                @click=${this._handleAttending}
+                                ?disabled="${!this._initialized || this._loading}"
                             >
-                                <ha-icon icon="mdi:account-check" slot="icon"></ha-icon>
-                                Attending
-                            </ha-button>
-                            <ha-button 
+                                <ha-icon icon="mdi:account-check"></ha-icon>
+                                <span>Attending</span>
+                                ${this._loading ? '<div class="loading-spinner"></div>' : ''}
+                            </button>
+                            <button 
                                 id="not-attending-btn"
                                 class="warning"
-                                @click=${this._handleNotAttending}
+                                ?disabled="${!this._initialized || this._loading}"
                             >
-                                <ha-icon icon="mdi:account-cancel" slot="icon"></ha-icon>
-                                Not Attending
-                            </ha-button>
+                                <ha-icon icon="mdi:account-cancel"></ha-icon>
+                                <span>Not Attending</span>
+                                ${this._loading ? '<div class="loading-spinner"></div>' : ''}
+                            </button>
                         </div>
                         <div class="inputs">
                             <ha-textfield class="comment-field" label="Comment" id="comment"></ha-textfield>
@@ -392,24 +485,57 @@ class BokatSeCard extends HTMLElement {
         `;
     }
 
-    _handleAttending() {
-        this._handleAttendanceChange('yes');
+    _updateButtonStates(loading) {
+        this._loading = loading;
+        this.render();
     }
 
-    _handleNotAttending() {
-        this._handleAttendanceChange('no');
-    }
-
-    _handleAttendanceChange(attendance) {
-        const comment = this.shadowRoot.querySelector('#comment')?.value || '';
-        const guests = parseInt(this.shadowRoot.querySelector('#guests')?.value || '0', 10);
+    async _handleAttendanceChange(attendance) {
+        if (this._loading) {
+            console.log('Already loading, skipping');
+            return;
+        }
         
-        this._hass.callService('bokat_se', 'respond', {
-            entity_id: this._config.entity,
-            attendance: attendance,
-            comment,
-            guests: attendance === 'yes' ? guests : 0
-        });
+        if (!this._hass) {
+            console.error('Home Assistant connection not ready');
+            return;
+        }
+        
+        try {
+            this._loading = true;
+            this._updateButtonStates(true);
+            
+            const comment = this.shadowRoot.querySelector('#comment')?.value || '';
+            const guests = parseInt(this.shadowRoot.querySelector('#guests')?.value || '0', 10);
+            
+            console.log('Calling service with:', {
+                entity_id: this._config.entity,
+                attendance,
+                comment,
+                guests: attendance === 'yes' ? guests : 0
+            });
+
+            await this._hass.callService('bokat_se', 'respond', {
+                entity_id: this._config.entity,
+                attendance: attendance,
+                comment,
+                guests: attendance === 'yes' ? guests : 0
+            });
+
+            // Clear inputs after successful response
+            if (this.shadowRoot.querySelector('#comment')) {
+                this.shadowRoot.querySelector('#comment').value = '';
+            }
+            if (this.shadowRoot.querySelector('#guests')) {
+                this.shadowRoot.querySelector('#guests').value = '0';
+            }
+            
+        } catch (error) {
+            console.error('Failed to update attendance:', error);
+        } finally {
+            this._loading = false;
+            this._updateButtonStates(false);
+        }
     }
     
     // This is needed to register the editor with the card
@@ -426,6 +552,74 @@ class BokatSeCard extends HTMLElement {
             show_summary: true,
             enable_response: false
         };
+    }
+
+    // Update styles
+    static get styles() {
+        return css`
+            .buttons {
+                display: flex;
+                gap: 8px;
+            }
+
+            button {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                text-transform: uppercase;
+                transition: all 0.2s ease;
+                position: relative;
+                min-height: 36px;
+                background: var(--primary-color);
+                color: var(--text-primary-color, white);
+            }
+
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            button.success {
+                background: var(--success-color, #4caf50);
+            }
+
+            button.warning {
+                background: var(--error-color, #f44336);
+            }
+
+            button:hover:not(:disabled) {
+                opacity: 0.9;
+            }
+
+            button:active:not(:disabled) {
+                transform: scale(0.98);
+            }
+
+            .loading-spinner {
+                width: 16px;
+                height: 16px;
+                border: 2px solid transparent;
+                border-top-color: currentColor;
+                border-radius: 50%;
+                animation: spin 0.6s linear infinite;
+                position: absolute;
+                right: 8px;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+        `;
     }
 }
 
