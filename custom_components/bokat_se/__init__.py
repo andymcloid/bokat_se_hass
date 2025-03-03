@@ -27,6 +27,7 @@ except ImportError:
     from ..bokat_se_lib import BokatAPI
 
 from .const import DOMAIN, SCAN_INTERVAL
+from .frontend import async_register_frontend
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ CONFIG_SCHEMA = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Bokat.se component."""
+    # Register frontend resources
+    await async_register_frontend(hass)
     return True
 
 
@@ -57,6 +60,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     session = async_get_clientsession(hass)
     api = BokatAPI(session=session)
+
+    # Register frontend resources
+    await async_register_frontend(hass)
 
     async def async_update_data():
         """Fetch data from API."""
