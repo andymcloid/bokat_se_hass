@@ -7,9 +7,12 @@
 - Improved code efficiency by removing unused imports
 - Cleaner frontend code with removal of console.log statements
 
+### Fixed
+- Fixed missing timedelta import causing setup errors
+
 ### Developer
 - Code cleanup and optimization
-- Removed unused imports (asyncio, sys, datetime.timedelta, typing.Any)
+- Removed unused imports while keeping essential dependencies
 - Followed project coding style guidelines for better maintainability
 
 ## 2.0.0 (2025-03-03)
