@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0 (2023-03-04)
+
+### Changed
+- Removed unnecessary debug logging throughout the codebase
+- Improved code efficiency by removing unused imports
+- Cleaner frontend code with removal of console.log statements
+
+### Developer
+- Code cleanup and optimization
+- Removed unused imports (asyncio, sys, datetime.timedelta, typing.Any)
+- Followed project coding style guidelines for better maintainability
+
 ## 2.0.0 (2025-03-03)
 
 ### Added

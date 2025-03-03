@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Any
 import aiohttp
 from bs4 import BeautifulSoup
 
-__version__ = "0.1.0"
+__version__ = "2.1.0"
 
 _LOGGER = logging.getLogger(__name__)
 
