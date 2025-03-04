@@ -9,7 +9,7 @@
 */
 
 // This version should match the VERSION in const.py
-const CARD_VERSION = "2.1.0";
+const CARD_VERSION = "2.1.1";
 
 class BokatSeCard extends HTMLElement {
     constructor() {
@@ -892,4 +892,5 @@ console.info(
     'color: white; background: #3498db; font-weight: 700;',
     'color: #3498db; background: white; font-weight: 700;'
 );
+
 

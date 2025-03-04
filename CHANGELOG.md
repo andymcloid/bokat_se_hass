@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1 (2023-03-04)
+
+### Changed
+- Added validation for official HACS support
+
 ## 2.1.0 (2023-03-04)
 
 ### Changed

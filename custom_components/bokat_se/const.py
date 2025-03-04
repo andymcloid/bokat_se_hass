@@ -2,7 +2,7 @@
 
 DOMAIN = "bokat_se"
 SCAN_INTERVAL = 1800  # 30 minutes in seconds
-VERSION = "2.1.0"  # Used for cache busting in frontend resources
+VERSION = "2.1.1"  # Used for cache busting in frontend resources
 
 # Configuration
 CONF_USERNAME = "username"
@@ -47,4 +47,5 @@ DEFAULT_SCAN_INTERVAL = 30  # minutes
 
 # Icons
 ICON = "mdi:yoga" 
+
 
