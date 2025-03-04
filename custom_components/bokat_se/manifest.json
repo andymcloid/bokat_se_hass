@@ -10,6 +10,4 @@
   "issue_tracker": "https://github.com/andymcloid/bokat_se_hass/issues",
   "requirements": ["beautifulsoup4>=4.12.2"],
   "version": "2.1.0"
-} 
-
-
+}
