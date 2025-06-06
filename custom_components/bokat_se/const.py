@@ -2,7 +2,7 @@
 
 DOMAIN = "bokat_se"
 SCAN_INTERVAL = 1800  # 30 minutes in seconds
-VERSION = "2.2.0"  # Used for cache busting in frontend resources
+VERSION = "2.3.0"  # Used for cache busting in frontend resources
 
 # Configuration
 CONF_USERNAME = "username"

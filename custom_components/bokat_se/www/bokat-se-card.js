@@ -9,7 +9,7 @@
 */
 
 // This version should match the VERSION in const.py
-const CARD_VERSION = "2.2.0";
+const CARD_VERSION = "2.3.0";
 
 class BokatSeCard extends HTMLElement {
     constructor() {
