@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.2.0 (2025-01-XX)
+## 2.2.0 (2025-01-18)
 
 ### Changed
 - **BREAKING**: Removed automatic Lovelace card registration to prevent Home Assistant crashes
