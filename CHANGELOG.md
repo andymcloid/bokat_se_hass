@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.2.0 (2025-01-XX)
+
+### Changed
+- **BREAKING**: Removed automatic Lovelace card registration to prevent Home Assistant crashes
+- The custom card must now be manually registered as a resource in Home Assistant
+- Updated installation instructions with clear steps for manual card registration
+- Improved stability by removing problematic frontend resource manipulation
+
+### Fixed
+- Fixed potential Home Assistant crashes caused by automatic resource registration
+- Removed redundant frontend registration calls
+
+### Developer
+- Removed `frontend.py` file as it's no longer needed
+- Cleaned up import statements in `__init__.py`
+- Improved code stability by following Home Assistant best practices
+
 ## 2.1.1 (2023-03-04)
 
 ### Changed

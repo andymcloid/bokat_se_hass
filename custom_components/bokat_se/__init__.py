@@ -33,7 +33,6 @@ from .const import (
     ATTR_ENTITY_ID, ATTR_ATTENDANCE, ATTR_COMMENT, ATTR_GUESTS,
     CONF_ACTIVITY_URL
 )
-from .frontend import async_register_frontend
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,9 +86,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     
     # Register the view for serving files
     hass.http.register_view(BokatSeCardView(component_path))
-    
-    # Register frontend resources
-    await async_register_frontend(hass)
 
     # Register services
     async def handle_refresh(call: ServiceCall) -> None:
@@ -204,9 +200,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     session = async_get_clientsession(hass)
     api = BokatAPI(session=session)
-
-    # Register frontend resources
-    await async_register_frontend(hass)
 
     async def async_update_data():
         """Fetch data from API."""

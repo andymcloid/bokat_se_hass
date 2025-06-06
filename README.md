@@ -24,18 +24,29 @@ A custom integration for Home Assistant that connects to Bokat.se and allows you
    - Go to HACS → Integrations → ⋮ → Custom repositories
    - Add `https://github.com/andymcloid/bokat_se_hass` with category "Integration"
 3. Install the "Bokat.se" integration from HACS
-4. The Lovelace card will be automatically installed with the integration
+4. **IMPORTANT: Manually register the Lovelace card (see section below)**
 5. Restart Home Assistant
 
 ### Manual Installation
 
 1. Download the latest release
 2. Copy the `custom_components/bokat_se` directory to your Home Assistant `custom_components` directory
-3. Copy the `custom_components/bokat_se/www/bokat-se-card.js` file to your Home Assistant `www` directory
-4. Add the card as a resource in your Lovelace configuration:
-   - Go to Configuration → Lovelace Dashboards → Resources
-   - Add `/local/bokat-se-card.js` as a JavaScript module
-5. Restart Home Assistant
+3. **IMPORTANT: Manually register the Lovelace card (see section below)**
+4. Restart Home Assistant
+
+### Register the Lovelace Card (Required for both HACS and Manual)
+
+**The custom card must be manually registered as a resource in Home Assistant:**
+
+1. Go to **Settings** → **Dashboards** → **Resources** (or **Configuration** → **Lovelace Dashboards** → **Resources** in older versions)
+2. Click **"Add Resource"**
+3. Enter the following details:
+   - **URL**: `/bokat_se/bokat-se-card.js`
+   - **Resource type**: **JavaScript Module**
+4. Click **"Create"**
+5. Clear your browser cache and reload the page
+
+> **Note**: This is a one-time setup step that must be done manually. The integration does not automatically register the card to avoid potential conflicts with Home Assistant's resource management.
 
 ## Configuration
 
@@ -89,7 +100,11 @@ Respond to an event with attendance status, comment, and guests.
 
 ## Lovelace Card
 
-A custom Lovelace card is included to display the activity information and participant details. To use it:
+A custom Lovelace card is included to display the activity information and participant details. 
+
+**Prerequisites**: Make sure you have registered the card as a resource (see installation section above).
+
+To use the card:
 
 1. Add the card to your dashboard:
    ```yaml
@@ -107,25 +122,25 @@ The card provides:
 
 ### Troubleshooting the Lovelace Card
 
-If the card doesn't appear in your dashboard or you get an error like "Custom element doesn't exist: bokat-se-card", follow these steps:
+If the card doesn't appear in your dashboard or you get an error like "Custom element doesn't exist: bokat-se-card":
 
-1. Make sure the card is properly loaded as a resource:
-   - Go to Configuration → Lovelace Dashboards → Resources
-   - Check if `/bokat_se/bokat-se-card.js` is listed as a JavaScript module
-   - If not, add it manually by clicking "Add Resource" and entering:
-     - URL: `/bokat_se/bokat-se-card.js`
-     - Resource type: JavaScript Module
+1. **Verify the resource is registered**:
+   - Go to **Settings** → **Dashboards** → **Resources**
+   - Make sure `/bokat_se/bokat-se-card.js` is listed as a **JavaScript Module**
+   - If it's missing, add it manually (see installation section above)
 
-2. Clear your browser cache and reload the page
+2. **Clear browser cache**:
+   - Hard refresh your browser (Ctrl+F5 or Cmd+Shift+R)
+   - Or clear your browser cache completely
 
-3. If using HACS:
-   - HACS does not automatically register the card as a resource
-   - You must manually add the resource as described in step 1
-   - This is a one-time setup step after installing the integration
+3. **Check the URL is accessible**:
+   - Visit `http://your-ha-address:8123/bokat_se/bokat-se-card.js` directly
+   - You should see JavaScript code, not a 404 error
+   - If you get 404, restart Home Assistant
 
-4. Check Home Assistant logs for any errors related to the card:
-   - Look for messages from the `bokat_se` component
-   - The integration attempts to register the card automatically, but this may not work in all environments
+4. **Check Home Assistant logs**:
+   - Look for any error messages related to `bokat_se`
+   - Enable debug logging if needed: `logger.homeassistant.components.bokat_se: debug`
 
 ## Automation Examples
 
